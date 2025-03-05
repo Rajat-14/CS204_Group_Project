@@ -261,7 +261,7 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         mc.rs1 = regMap[operands[1]];
         mc.rs2 = regMap[operands[2]];
     }
-    else if (inst.opcode == "0010011")
+    else if (inst.opcode == "0010011" || inst.opcode == "0000011" || inst.opcode == "1100111")
     { // I-type (e.g., addi)
         if (operands.size() < 3)
         {
@@ -296,6 +296,23 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         }
         mc.imm = immToBinary(imm, 12);
     }
+    else if (inst.opcode == "0110111" || inst.opcode == "0010111")
+    {
+        // U-type
+        if (operands.size() < 2)
+        {
+            cerr << "Error: Not enough operands for " << op << endl;
+            return;
+        }
+        mc.format_type = "U";
+        mc.rd = regMap[operands[0]];
+        int imm = stoi(operands[1]);
+        if (operands[1][0] == '0' && (operands[1][1] == 'x' || operands[1][1] == 'X'))
+        {
+            imm = stoi(operands[1], nullptr, 16);
+        }
+        mc.imm = immToBinary(imm, 20);
+    }
 
     // Write output
     mcFile << std::hex << address << " ";
@@ -318,6 +335,14 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
     else if (mc.format_type == "S")
     {
         mcFile << mc.imm.substr(0, 7) << mc.rs2 << mc.rs1 << mc.funct3 << mc.imm.substr(7, 5) << mc.opcode << " ";
+        for (const auto &t : tokens)
+            mcFile << t.first << " ";
+        mcFile << " # " << mc.imm << "-" << mc.rs1 << "-" << mc.funct3
+               << "-" << mc.rd << "-" << mc.opcode;
+    }
+    else if (mc.format_type == "U")
+    {
+        mcFile << mc.imm << mc.rd << mc.opcode << " ";
         for (const auto &t : tokens)
             mcFile << t.first << " ";
         mcFile << " # " << mc.imm << "-" << mc.rs1 << "-" << mc.funct3
