@@ -14,6 +14,7 @@ enum Token
 {
     tok_operator = -1,
     tok_label = -2,
+    tok_label2=-8,
     tok_register = -3,
     tok_immediate = -4,
     tok_EOF = -5,
@@ -87,7 +88,9 @@ int lex()
         if (registerValue >= 0 && registerValue <= 31)
             return tok_register;
     }
+    
     // Handle identifiers (operator names, labels, or register names by mnemonic)
+
     if (isalpha(lastChar))
     {
         Operator = "";
@@ -101,10 +104,16 @@ int lex()
             registerValue = reg[Operator];
             return tok_register;
         }
+        
         if (operators.find(Operator) == operators.end())
         {
             label = Operator;
-            return tok_label;
+            if(lastChar==':'){
+                return tok_label;
+            }
+            else{
+            return tok_label2;
+            }
         }
         return tok_operator;
     }
@@ -319,32 +328,36 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
     if (mc.format_type == "R")
     {
         mcFile << mc.funct7 << mc.rs2 << mc.rs1 << mc.funct3 << mc.rd << mc.opcode << "  ";
-        for (const auto &t : tokens)
-            mcFile << t.first << " ";
+        mcFile << op << " ";
+        for (const auto &t : operands)
+            mcFile << t << " ";
         mcFile << " # " << mc.funct7 << "-" << mc.rs2 << "-" << mc.rs1
                << "-" << mc.funct3 << "-" << mc.rd << "-" << mc.opcode;
     }
     else if (mc.format_type == "I")
     {
         mcFile << mc.imm << mc.rs1 << mc.funct3 << mc.rd << mc.opcode << "  ";
-        for (const auto &t : tokens)
-            mcFile << t.first << " ";
+        mcFile << op << " ";
+        for (const auto &t : operands)
+            mcFile << t << " ";
         mcFile << " # " << mc.imm << "-" << mc.rs1 << "-" << mc.funct3
                << "-" << mc.rd << "-" << mc.opcode;
     }
     else if (mc.format_type == "S")
     {
         mcFile << mc.imm.substr(0, 7) << mc.rs2 << mc.rs1 << mc.funct3 << mc.imm.substr(7, 5) << mc.opcode << " ";
-        for (const auto &t : tokens)
-            mcFile << t.first << " ";
+        mcFile << op << " ";
+        for (const auto &t : operands)
+            mcFile << t << " ";
         mcFile << " # " << mc.imm << "-" << mc.rs1 << "-" << mc.funct3
                << "-" << mc.rd << "-" << mc.opcode;
     }
     else if (mc.format_type == "U")
     {
         mcFile << mc.imm << mc.rd << mc.opcode << " ";
-        for (const auto &t : tokens)
-            mcFile << t.first << " ";
+        mcFile << op << " ";
+        for (const auto &t : operands)
+            mcFile << t << " ";
         mcFile << " # " << mc.imm << "-" << mc.rs1 << "-" << mc.funct3
                << "-" << mc.rd << "-" << mc.opcode;
     }
@@ -413,6 +426,71 @@ void assemble()
     mcFile.close();
 }
 
+void preParse()
+{
+    // Reset file state and pointer for pre-parsing.
+    asmFile.clear();
+    asmFile.seekg(0);
+
+    int address = 0;                  // Starting address for instructions.
+    vector<pair<string, int>> tokens; // Accumulate tokens for the current line.
+
+    while (true)
+    {
+        int tok = lex(); // Get the next token from the input.
+
+        if (tok == tok_EOF)
+        {
+            // End-of-file reached: process any remaining tokens.
+            if (!tokens.empty())
+            {
+                // If the first token is a label, store it.
+                if (tokens[0].second == tok_label)
+                {
+                    labelMap[tokens[0].first] = address;
+                    // Optionally remove the label token if there's also an instruction on the line.
+                    tokens.erase(tokens.begin());
+                }
+                // If there are remaining tokens (an instruction), update address.
+                if (!tokens.empty())
+                    address += 4;
+            }
+            break;
+        }
+
+        if (tok == tok_newline)
+        {
+            if (!tokens.empty())
+            {
+                // Check if the line begins with a label.
+                if (tokens[0].second == tok_label)
+                {
+                    labelMap[tokens[0].first] = address;
+                    // Remove the label token so that the rest of the tokens form the instruction.
+                    tokens.erase(tokens.begin());
+                }
+                // If there is an instruction on this line, update the address.
+                if (!tokens.empty())
+                    address += 4;
+            }
+            tokens.clear();
+        }
+        else
+        {
+            // Store tokens (only for operator, register, immediate, and label).
+            if (tok == tok_operator)
+                tokens.push_back({Operator, tok_operator});
+            else if (tok == tok_register)
+                tokens.push_back({"x" + to_string(registerValue), tok_register});
+            else if (tok == tok_immediate)
+                tokens.push_back({immediateValue, tok_immediate});
+            else if (tok == tok_label)
+                tokens.push_back({label, tok_label});
+        }
+    }
+}
+
+
 int main()
 {
     asmFile.open("input.asm");
@@ -421,6 +499,15 @@ int main()
         cerr << "Error: Unable to open input.asm" << endl;
         return 1;
     }
-    assemble();
+    preParse();
+
+    
+    
+
+    asmFile.clear();
+    asmFile.seekg(0);
+    lastChar = ' ';
+
+        assemble();
     return 0;
 }
