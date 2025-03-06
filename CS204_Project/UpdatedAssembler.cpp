@@ -258,8 +258,8 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
     mc.rs2 = "";
     mc.imm = "";
 
-    if (inst.opcode == "0110011")
-    { // R-type (e.g., add, sub)
+    if (inst.opcode == "0110011"){ 
+        // R-type (e.g., add, sub)
         if (operands.size() < 3)
         {
             cerr << "Error: Not enough operands for " << op << endl;
@@ -322,6 +322,18 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         }
         mc.imm = immToBinary(imm, 20);
     }
+    else if (inst.opcode == "1101111")
+    {
+        // UJ-type
+        if (operands.size() < 2)
+        {
+            cerr << "Error: Not enough operands for " << op << endl;
+            return;
+        }
+        mc.format_type = "UJ";
+        mc.rd = regMap[operands[0]];
+        mc.imm = operands[1];
+    }
 
     // Write output
     mcFile << std::hex << address << " ";
@@ -358,9 +370,31 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         mcFile << op << " ";
         for (const auto &t : operands)
             mcFile << t << " ";
+
         mcFile << " # " << mc.imm << "-" << mc.rs1 << "-" << mc.funct3
                << "-" << mc.rd << "-" << mc.opcode;
     }
+
+    else if(mc.format_type=="UJ"){
+        // we have jal instruction only
+        mc.imm=immToBinary(labelMap[operands[1]]-address,20);
+        mcFile<<mc.imm.substr(19,19)<<mc.imm.substr(9,0)<<mc.imm.substr(10,10)<<mc.imm.substr(18,11)<<mc.rd<<mc.opcode<<" ";
+        mcFile<<op<<" ";
+        for(const auto &t:operands)
+            mcFile<<t<<" ";
+        mcFile<<" # "<<mc.imm<<"-"<<mc.rd<<"-"<<mc.opcode;
+
+    }
+    else if(mc.format_type=="SB"){
+        // we have beq,bne,blt,bge
+        mc.imm=immToBinary(labelMap[operands[2]]-address,12);
+        mcFile<<mc.imm.substr(11,11)<<mc.imm.substr(9,4)<<mc.rs2<<mc.rs1<<mc.funct3<<mc.imm.substr(3,0)<<mc.imm.substr(4,4)<<mc.imm.substr(7,1)<<mc.opcode<<" ";
+        mcFile<<op<<" ";
+        for(const auto &t:operands)
+            mcFile<<t<<" ";
+        mcFile<<" # "<<mc.imm<<"-"<<mc.rs1<<"-"<<mc.rs2<<"-"<<mc.funct3<<"-"<<mc.opcode;
+    }
+    
     mcFile << endl;
 
     address += 4; // Increment address for next instruction
@@ -419,6 +453,9 @@ void assemble()
             else if (tok == tok_label)
             {
                 tokens.push_back({label, tok_label});
+            }
+            else if(tok==tok_label2){
+                tokens.push_back({label,tok_label2});
             }
         }
     }
@@ -502,7 +539,11 @@ int main()
     preParse();
 
     
-    
+    cout << "Label Map Contents:" << endl;
+    for (const auto &entry : labelMap)
+    {
+        cout << entry.first << " -> " << entry.second << endl;
+    }
 
     asmFile.clear();
     asmFile.seekg(0);
