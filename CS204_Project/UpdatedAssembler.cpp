@@ -334,6 +334,22 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         mc.rd = regMap[operands[0]];
         mc.imm = operands[1];
     }
+    else if(inst.opcode=="1100011"){
+        // SB-type
+        if(operands.size()<3){
+            cerr<<"Error: Not enough operands for "<<op<<endl;
+            return;
+        }
+        mc.format_type="SB";
+        mc.rs1=regMap[operands[0]];
+        mc.rs2=regMap[operands[1]];
+        mc.imm=operands[2];
+    }
+    else
+    {
+        cerr << "Error: Unknown instruction format for " << op << endl;
+        return;
+    }
 
     // Write output
     mcFile << std::hex << address << " ";
