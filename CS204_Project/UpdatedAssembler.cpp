@@ -393,8 +393,8 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
 
     else if(mc.format_type=="UJ"){
         // we have jal instruction only
-        mc.imm=immToBinary(labelMap[operands[1]]-address,20);
-        mcFile<<mc.imm.substr(19,19)<<mc.imm.substr(9,0)<<mc.imm.substr(10,10)<<mc.imm.substr(18,11)<<mc.rd<<mc.opcode<<" ";
+        mc.imm=immToBinary(labelMap[operands[1]]-address,21);
+        mcFile<<mc.imm.substr(20,20)<<mc.imm.substr(10,1)<<mc.imm.substr(11,11)<<mc.imm.substr(19,12)<<mc.rd<<mc.opcode<<" ";
         mcFile<<op<<" ";
         for(const auto &t:operands)
             mcFile<<t<<" ";
@@ -403,8 +403,8 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
     }
     else if(mc.format_type=="SB"){
         // we have beq,bne,blt,bge
-        mc.imm=immToBinary(labelMap[operands[2]]-address,12);
-        mcFile<<mc.imm.substr(11,11)<<mc.imm.substr(9,4)<<mc.rs2<<mc.rs1<<mc.funct3<<mc.imm.substr(3,0)<<mc.imm.substr(4,4)<<mc.imm.substr(7,1)<<mc.opcode<<" ";
+        mc.imm=immToBinary(labelMap[operands[2]]-address,13);
+        mcFile<<mc.imm.substr(12,12)<<mc.imm.substr(10,5)<<mc.rs2<<mc.rs1<<mc.funct3<<mc.imm.substr(4,1)<<mc.imm.substr(11,11)<<mc.opcode<<" ";
         mcFile<<op<<" ";
         for(const auto &t:operands)
             mcFile<<t<<" ";
