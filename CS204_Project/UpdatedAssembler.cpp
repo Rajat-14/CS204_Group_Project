@@ -393,10 +393,10 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
 
     else if(mc.format_type=="UJ"){
         // we have jal instruction only
-        mcFile  << mc.imm.substr(20, 1)  // Bit 20 (1 bit)
-                << mc.imm.substr(1, 10)  // Bits [10:1] (10 bits)
-                << mc.imm.substr(11, 1)  // Bit 11 (1 bit)
-                << mc.imm.substr(12, 8)  // Bits [19:12] (8 bits)
+        mcFile  << mc.imm.substr(0, 1)  // Bit 20 (1 bit)
+                << mc.imm.substr(10, 10)  // Bits [10:1] (10 bits)
+                << mc.imm.substr(9, 1)  // Bit 11 (1 bit)
+                << mc.imm.substr(1, 8)  // Bits [19:12] (8 bits)
                 << mc.rd
                 << mc.opcode << " ";
         mcFile<<op<<" ";
@@ -408,13 +408,13 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
     }
     else if(mc.format_type=="SB"){
         // we have beq,bne,blt,bge instructions
-        mcFile << mc.imm.substr(12, 1)  // Bit 12 (1 bit)
-               << mc.imm.substr(5,6)  // Bits [10:5] (6 bits)
+        mcFile << mc.imm.substr(0, 1)  // Bit 12 (1 bit)
+               << mc.imm.substr(2,6)  // Bits [10:5] (6 bits)
                << mc.rs2
                << mc.rs1
                << mc.funct3
-               << mc.imm.substr(1,4)  // Bits [4:1] (4 bits)
-               << mc.imm.substr(11,1)  // Bit 11 (1 bit)
+               << mc.imm.substr(8,4)  // Bits [4:1] (4 bits)
+               << mc.imm.substr(1,1)  // Bit 11 (1 bit)
                << mc.opcode << " ";
         mcFile<<op<<" ";
         for(const auto &t:operands)
