@@ -233,6 +233,9 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
 
     else if (tokens[0].second == tok_label)
     {
+        if(tokens.size()==1){
+            return;
+        }
         op = tokens[1].first;
 
         for (int i = 2; i < tokens.size(); i++)
