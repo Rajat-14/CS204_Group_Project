@@ -14,7 +14,7 @@ enum Token
 {
     tok_operator = -1,
     tok_label = -2,
-    tok_label2=-8,
+    tok_label2 = -8,
     tok_register = -3,
     tok_immediate = -4,
     tok_EOF = -5,
@@ -88,7 +88,7 @@ int lex()
         if (registerValue >= 0 && registerValue <= 31)
             return tok_register;
     }
-    
+
     // Handle identifiers (operator names, labels, or register names by mnemonic)
 
     if (isalpha(lastChar))
@@ -104,15 +104,17 @@ int lex()
             registerValue = reg[Operator];
             return tok_register;
         }
-        
+
         if (operators.find(Operator) == operators.end())
         {
             label = Operator;
-            if(lastChar==':'){
+            if (lastChar == ':')
+            {
                 return tok_label;
             }
-            else{
-            return tok_label2;
+            else
+            {
+                return tok_label2;
             }
         }
         return tok_operator;
@@ -149,7 +151,9 @@ int lex()
 
 // Mapping registers to their binary representations
 unordered_map<string, string> regMap = {
-    {"x0", "00000"}, {"x1", "00001"}, {"x2", "00010"}, {"x3", "00011"}, {"x4", "00100"}, {"x5", "00101"}, {"x6", "00110"}, {"x7", "00111"}, {"x8", "01000"}, {"x9", "01001"}, {"x10", "01010"}, {"x11", "01011"}, {"x12", "01100"}, {"x13", "01101"}, {"x14", "01110"}, {"x15", "01111"}, {"x16", "10000"}, {"x17", "10001"}, {"x18", "10010"}, {"x19", "10011"}, {"x20", "10100"}, {"x21", "10101"}, {"x22", "10110"}, {"x23", "10111"}, {"x24", "11000"}, {"x25", "11001"}, {"x26", "11010"}, {"x27", "11011"}, {"x28", "11100"}, {"x29", "11101"}, {"x30", "11110"}, {"x31", "11111"}};
+    {"x0", "00000"}, {"x1", "00001"}, {"x2", "00010"}, {"x3", "00011"}, {"x4", "00100"}, {"x5", "00101"}, {"x6", "00110"}, {"x7", "00111"}, {"x8", "01000"}, {"x9", "01001"}, {"x10", "01010"}, {"x11", "01011"}, {"x12", "01100"}, {"x13", "01101"}, {"x14", "01110"}, {"x15", "01111"}, {"x16", "10000"}, {"x17", "10001"}, {"x18", "10010"}, {"x19", "10011"}, {"x20", "10100"}, {"x21", "10101"}, {"x22", "10110"}, {"x23", "10111"}, {"x24", "11000"}, {"x25", "11001"}, {"x26", "11010"}, {"x27", "11011"}, {"x28", "11100"}, {"x29", "11101"}, {"x30", "11110"}, {"x31", "11111"},
+    {"ra", "00001"}, {"sp", "00010"}, {"gp","00011"}, {"tp", "00100"}, {"t0", "00101"}, {"t1", "00110"}, {"t2", "00111"}, {"s0","01000"}, {"s1","01001"}, {"a0", "01010"}, {"a1", "01011"}, {"a2", "01100"}, {"a3", "01101"}, {"a4", "01110"}, {"a5", "01111"}, {"a6", "10000"}, {"a7",  "10001"}, {"s2", "10010"}, {"s3", "10011"}, {"s4", "10100"}, {"s5","10101"}, {"s6", "10110"}, {"s7", "10111"}, {"s8", "11000"}, {"s9", "11001"}, {"s10", "11010"}, {"s11", "11011"}, {"t3","11100"}, {"t4", "11101"}, {"t5", "11110"}, {"t6", "11111"}
+};
 
 // Mapping instructions to their binary opcode, func3, and func7 values
 struct Instruction
@@ -233,7 +237,8 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
 
     else if (tokens[0].second == tok_label)
     {
-        if(tokens.size()==1){
+        if (tokens.size() == 1)
+        {
             return;
         }
         op = tokens[1].first;
@@ -261,7 +266,8 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
     mc.rs2 = "";
     mc.imm = "";
 
-    if (inst.opcode == "0110011"){ 
+    if (inst.opcode == "0110011")
+    {
         // R-type (e.g., add, sub)
         if (operands.size() < 3)
         {
@@ -337,16 +343,18 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         mc.rd = regMap[operands[0]];
         mc.imm = immToBinary(labelMap[operands[1]] - address, 21);
     }
-    else if(inst.opcode=="1100011"){
+    else if (inst.opcode == "1100011")
+    {
         // SB-type
-        if(operands.size()<3){
-            cerr<<"Error: Not enough operands for "<<op<<endl;
+        if (operands.size() < 3)
+        {
+            cerr << "Error: Not enough operands for " << op << endl;
             return;
         }
-        mc.format_type="SB";
-        mc.rs1=regMap[operands[0]];
-        mc.rs2=regMap[operands[1]];
-        mc.imm=immToBinary(labelMap[operands[2]]-address,13);
+        mc.format_type = "SB";
+        mc.rs1 = regMap[operands[0]];
+        mc.rs2 = regMap[operands[1]];
+        mc.imm = immToBinary(labelMap[operands[2]] - address, 13);
     }
     else
     {
@@ -362,8 +370,8 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         mcFile << op << " ";
         for (const auto &t : operands)
             mcFile << t << " ";
-        mcFile << " # " << mc.funct7 << "-" << mc.rs2 << "-" << mc.rs1
-               << "-" << mc.funct3 << "-" << mc.rd << "-" << mc.opcode;
+        mcFile << " # " << mc.opcode << "-" << mc.funct3 << "-" << mc.funct7
+               << "-" << mc.rd << "-" << mc.rs1 << "-" << mc.rs2 << "-" << "NULL";
     }
     else if (mc.format_type == "I")
     {
@@ -371,8 +379,8 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         mcFile << op << " ";
         for (const auto &t : operands)
             mcFile << t << " ";
-        mcFile << " # " << mc.imm << "-" << mc.rs1 << "-" << mc.funct3
-               << "-" << mc.rd << "-" << mc.opcode;
+        mcFile << " # " << mc.opcode << "-" << mc.funct3 << "-" << "NULL"
+               << "-" << mc.rd << "-" << mc.rs1 << "-" << mc.imm;
     }
     else if (mc.format_type == "S")
     {
@@ -380,8 +388,8 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         mcFile << op << " ";
         for (const auto &t : operands)
             mcFile << t << " ";
-        mcFile << " # " << mc.imm << "-" << mc.rs1 << "-" << mc.funct3
-               << "-" << mc.rd << "-" << mc.opcode;
+        mcFile << " # " << mc.opcode << "-" << mc.funct3 << "-" << mc.funct7
+               << "-" << mc.rs1 << "-" << mc.rs2 << "-" << mc.imm;
     }
     else if (mc.format_type == "U")
     {
@@ -390,41 +398,41 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         for (const auto &t : operands)
             mcFile << t << " ";
 
-        mcFile << " # " << mc.imm << "-" << mc.rs1 << "-" << mc.funct3
-               << "-" << mc.rd << "-" << mc.opcode;
+        mcFile << " # " << mc.opcode << "-"  << "NULL" << "-" << "NULL" << mc.rd << "-" << mc.imm;
     }
 
-    else if(mc.format_type=="UJ"){
+    else if (mc.format_type == "UJ")
+    {
         // we have jal instruction only
-        mcFile  << mc.imm.substr(0, 1)  // Bit 20 (1 bit)
-                << mc.imm.substr(10, 10)  // Bits [10:1] (10 bits)
-                << mc.imm.substr(9, 1)  // Bit 11 (1 bit)
-                << mc.imm.substr(1, 8)  // Bits [19:12] (8 bits)
-                << mc.rd
-                << mc.opcode << " ";
-        mcFile<<op<<" ";
- 
-        for(const auto &t:operands)
-            mcFile<<t<<" ";
-        mcFile<<" # "<<mc.imm<<"-"<<mc.rd<<"-"<<mc.opcode;
+        mcFile << mc.imm.substr(0, 1)   // Bit 20 (1 bit)
+               << mc.imm.substr(10, 10) // Bits [10:1] (10 bits)
+               << mc.imm.substr(9, 1)   // Bit 11 (1 bit)
+               << mc.imm.substr(1, 8)   // Bits [19:12] (8 bits)
+               << mc.rd
+               << mc.opcode << " ";
+        mcFile << op << " ";
 
+        for (const auto &t : operands)
+            mcFile << t << " ";
+        mcFile << " # " << mc.opcode << "-" << "NULL" << "-" << "NULL"<< mc.rd << "-" << mc.imm;
     }
-    else if(mc.format_type=="SB"){
+    else if (mc.format_type == "SB")
+    {
         // we have beq,bne,blt,bge instructions
-        mcFile << mc.imm.substr(0, 1)  // Bit 12 (1 bit)
-               << mc.imm.substr(2,6)  // Bits [10:5] (6 bits)
+        mcFile << mc.imm.substr(0, 1) // Bit 12 (1 bit)
+               << mc.imm.substr(2, 6) // Bits [10:5] (6 bits)
                << mc.rs2
                << mc.rs1
                << mc.funct3
-               << mc.imm.substr(8,4)  // Bits [4:1] (4 bits)
-               << mc.imm.substr(1,1)  // Bit 11 (1 bit)
+               << mc.imm.substr(8, 4) // Bits [4:1] (4 bits)
+               << mc.imm.substr(1, 1) // Bit 11 (1 bit)
                << mc.opcode << " ";
-        mcFile<<op<<" ";
-        for(const auto &t:operands)
-            mcFile<<t<<" ";
-        mcFile<<" # "<<mc.imm<<"-"<<mc.rs1<<"-"<<mc.rs2<<"-"<<mc.funct3<<"-"<<mc.opcode;
+        mcFile << op << " ";
+        for (const auto &t : operands)
+            mcFile << t << " ";
+        mcFile << " # " << mc.opcode << "-" << mc.funct3 << "-" << mc.funct7 << "-" << mc.rs1 << "-" << mc.rs2 << "-" << mc.imm;
     }
-    
+
     mcFile << endl;
 
     address += 4; // Increment address for next instruction
@@ -484,8 +492,9 @@ void assemble()
             {
                 tokens.push_back({label, tok_label});
             }
-            else if(tok==tok_label2){
-                tokens.push_back({label,tok_label2});
+            else if (tok == tok_label2)
+            {
+                tokens.push_back({label, tok_label2});
             }
         }
     }
@@ -557,7 +566,6 @@ void preParse()
     }
 }
 
-
 int main()
 {
     asmFile.open("input.asm");
@@ -568,7 +576,6 @@ int main()
     }
     preParse();
 
-    
     cout << "Label Map Contents:" << endl;
     for (const auto &entry : labelMap)
     {
@@ -579,6 +586,6 @@ int main()
     asmFile.seekg(0);
     lastChar = ' ';
 
-        assemble();
+    assemble();
     return 0;
 }
