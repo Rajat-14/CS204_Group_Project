@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <set>
 #include <utility>
+#include <map>
 using namespace std;
 
 enum Token
@@ -30,8 +31,9 @@ string immediateValue;
 unordered_set<string> operators = {"add", "and", "or", "sll", "slt", "sra", "srl", "sub", "xor", "mul", "div", "rem", "addi", "andi", "ori", "xori", "slli", "srli", "srai", "slti", "sltiu", "lb", "ld", "lh", "lw", "jalr", "sb", "sw", "sd", "sh", "beq", "bne", "bge", "blt", "auipc", "lui", "jal"};
 unordered_map<string, int> reg = {
     {"ra", 1}, {"sp", 2}, {"gp", 3}, {"tp", 4}, {"t0", 5}, {"t1", 6}, {"t2", 7}, {"s0", 8}, {"s1", 9}, {"a0", 10}, {"a1", 11}, {"a2", 12}, {"a3", 13}, {"a4", 14}, {"a5", 15}, {"a6", 16}, {"a7", 17}, {"s2", 18}, {"s3", 19}, {"s4", 20}, {"s5", 21}, {"s6", 22}, {"s7", 23}, {"s8", 24}, {"s9", 25}, {"s10", 26}, {"s11", 27}, {"t3", 28}, {"t4", 29}, {"t5", 30}, {"t6", 31}};
-// Declare lastChar as a static variable so its state is preserved.
+
 static int lastChar = ' ';
+bool istext = true;
 
 int lex()
 {
@@ -151,9 +153,7 @@ int lex()
 
 // Mapping registers to their binary representations
 unordered_map<string, string> regMap = {
-    {"x0", "00000"}, {"x1", "00001"}, {"x2", "00010"}, {"x3", "00011"}, {"x4", "00100"}, {"x5", "00101"}, {"x6", "00110"}, {"x7", "00111"}, {"x8", "01000"}, {"x9", "01001"}, {"x10", "01010"}, {"x11", "01011"}, {"x12", "01100"}, {"x13", "01101"}, {"x14", "01110"}, {"x15", "01111"}, {"x16", "10000"}, {"x17", "10001"}, {"x18", "10010"}, {"x19", "10011"}, {"x20", "10100"}, {"x21", "10101"}, {"x22", "10110"}, {"x23", "10111"}, {"x24", "11000"}, {"x25", "11001"}, {"x26", "11010"}, {"x27", "11011"}, {"x28", "11100"}, {"x29", "11101"}, {"x30", "11110"}, {"x31", "11111"},
-    {"ra", "00001"}, {"sp", "00010"}, {"gp","00011"}, {"tp", "00100"}, {"t0", "00101"}, {"t1", "00110"}, {"t2", "00111"}, {"s0","01000"}, {"s1","01001"}, {"a0", "01010"}, {"a1", "01011"}, {"a2", "01100"}, {"a3", "01101"}, {"a4", "01110"}, {"a5", "01111"}, {"a6", "10000"}, {"a7",  "10001"}, {"s2", "10010"}, {"s3", "10011"}, {"s4", "10100"}, {"s5","10101"}, {"s6", "10110"}, {"s7", "10111"}, {"s8", "11000"}, {"s9", "11001"}, {"s10", "11010"}, {"s11", "11011"}, {"t3","11100"}, {"t4", "11101"}, {"t5", "11110"}, {"t6", "11111"}
-};
+    {"x0", "00000"}, {"x1", "00001"}, {"x2", "00010"}, {"x3", "00011"}, {"x4", "00100"}, {"x5", "00101"}, {"x6", "00110"}, {"x7", "00111"}, {"x8", "01000"}, {"x9", "01001"}, {"x10", "01010"}, {"x11", "01011"}, {"x12", "01100"}, {"x13", "01101"}, {"x14", "01110"}, {"x15", "01111"}, {"x16", "10000"}, {"x17", "10001"}, {"x18", "10010"}, {"x19", "10011"}, {"x20", "10100"}, {"x21", "10101"}, {"x22", "10110"}, {"x23", "10111"}, {"x24", "11000"}, {"x25", "11001"}, {"x26", "11010"}, {"x27", "11011"}, {"x28", "11100"}, {"x29", "11101"}, {"x30", "11110"}, {"x31", "11111"}, {"ra", "00001"}, {"sp", "00010"}, {"gp", "00011"}, {"tp", "00100"}, {"t0", "00101"}, {"t1", "00110"}, {"t2", "00111"}, {"s0", "01000"}, {"s1", "01001"}, {"a0", "01010"}, {"a1", "01011"}, {"a2", "01100"}, {"a3", "01101"}, {"a4", "01110"}, {"a5", "01111"}, {"a6", "10000"}, {"a7", "10001"}, {"s2", "10010"}, {"s3", "10011"}, {"s4", "10100"}, {"s5", "10101"}, {"s6", "10110"}, {"s7", "10111"}, {"s8", "11000"}, {"s9", "11001"}, {"s10", "11010"}, {"s11", "11011"}, {"t3", "11100"}, {"t4", "11101"}, {"t5", "11110"}, {"t6", "11111"}};
 
 // Mapping instructions to their binary opcode, func3, and func7 values
 struct Instruction
@@ -216,6 +216,7 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
 {
     if (tokens.empty())
         return; // No instruction to process
+
     string op;
     vector<string> operands;
     if (tokens[0].second == tok_operator)
@@ -227,7 +228,7 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         {
             operands.push_back(tokens[i].first);
         }
-        // Validate if the opcode exists
+
         if (instMap.find(op) == instMap.end())
         {
             cerr << "Unknown instruction: " << op << endl;
@@ -268,7 +269,7 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
 
     if (inst.opcode == "0110011")
     {
-        // R-type (e.g., add, sub)
+        // R-type
         if (operands.size() < 3)
         {
             cerr << "Error: Not enough operands for " << op << endl;
@@ -279,8 +280,8 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         mc.rs1 = regMap[operands[1]];
         mc.rs2 = regMap[operands[2]];
     }
-    else if (inst.opcode == "0010011" || inst.opcode == "0000011" || inst.opcode == "1100111")
-    { // I-type (e.g., addi)
+    else if (inst.opcode == "0010011" || inst.opcode == "1100111")
+    { // I-type
         if (operands.size() < 3)
         {
             cerr << "Error: Not enough operands for " << op << endl;
@@ -298,7 +299,7 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
     }
     else if (inst.opcode == "0100011")
     {
-        // S-type (eg., sw)
+        // S-type
         if (operands.size() < 3)
         {
             cerr << "Error: Not enough operands for " << op << endl;
@@ -343,6 +344,24 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         mc.rd = regMap[operands[0]];
         mc.imm = immToBinary(labelMap[operands[1]] - address, 21);
     }
+    else if (inst.opcode == "0000011")
+    {
+        // load
+        if (operands.size() < 3)
+        {
+            cerr << "Error: Not enough operands for " << op << endl;
+            return;
+        }
+        mc.format_type = "I";
+        mc.rd = regMap[operands[0]];
+        mc.rs1 = regMap[operands[2]];
+        int imm = stoi(operands[1]);
+        if (operands[1][0] == '0' && (operands[1][1] == 'x' || operands[1][1] == 'X'))
+        {
+            imm = stoi(operands[1], nullptr, 16);
+        }
+        mc.imm = immToBinary(imm, 12);
+    }
     else if (inst.opcode == "1100011")
     {
         // SB-type
@@ -363,7 +382,7 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
     }
 
     // Write output
-    mcFile << std::hex << address << " ";
+    mcFile << "0x" << std::hex << address << " ";
     if (mc.format_type == "R")
     {
         mcFile << mc.funct7 << mc.rs2 << mc.rs1 << mc.funct3 << mc.rd << mc.opcode << "  ";
@@ -398,34 +417,34 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
         for (const auto &t : operands)
             mcFile << t << " ";
 
-        mcFile << " # " << mc.opcode << "-"  << "NULL" << "-" << "NULL" << mc.rd << "-" << mc.imm;
+        mcFile << " # " << mc.opcode << "-" << "NULL" << "-" << "NULL" << mc.rd << "-" << mc.imm;
     }
 
     else if (mc.format_type == "UJ")
     {
-        // we have jal instruction only
-        mcFile << mc.imm.substr(0, 1)   // Bit 20 (1 bit)
-               << mc.imm.substr(10, 10) // Bits [10:1] (10 bits)
-               << mc.imm.substr(9, 1)   // Bit 11 (1 bit)
-               << mc.imm.substr(1, 8)   // Bits [19:12] (8 bits)
+
+        mcFile << mc.imm.substr(0, 1)
+               << mc.imm.substr(10, 10)
+               << mc.imm.substr(9, 1)
+               << mc.imm.substr(1, 8)
                << mc.rd
                << mc.opcode << " ";
         mcFile << op << " ";
 
         for (const auto &t : operands)
             mcFile << t << " ";
-        mcFile << " # " << mc.opcode << "-" << "NULL" << "-" << "NULL"<< mc.rd << "-" << mc.imm;
+        mcFile << " # " << mc.opcode << "-" << "NULL" << "-" << "NULL" << mc.rd << "-" << mc.imm;
     }
     else if (mc.format_type == "SB")
     {
-        // we have beq,bne,blt,bge instructions
-        mcFile << mc.imm.substr(0, 1) // Bit 12 (1 bit)
-               << mc.imm.substr(2, 6) // Bits [10:5] (6 bits)
+
+        mcFile << mc.imm.substr(0, 1)
+               << mc.imm.substr(2, 6)
                << mc.rs2
                << mc.rs1
                << mc.funct3
-               << mc.imm.substr(8, 4) // Bits [4:1] (4 bits)
-               << mc.imm.substr(1, 1) // Bit 11 (1 bit)
+               << mc.imm.substr(8, 4)
+               << mc.imm.substr(1, 1)
                << mc.opcode << " ";
         mcFile << op << " ";
         for (const auto &t : operands)
@@ -437,7 +456,8 @@ void processInstruction(vector<pair<string, int>> &tokens, ofstream &mcFile, int
 
     address += 4; // Increment address for next instruction
 }
-
+bool isCode = true;
+map<string, string> memory; //{address,value}
 void assemble()
 {
     ofstream mcFile("output.mc");
@@ -446,60 +466,96 @@ void assemble()
         cerr << "Error: Unable to create output.mc" << endl;
         return;
     }
-
-    int address = 0;                  // starting address for instructions
-    vector<pair<string, int>> tokens; // Accumulate tokens for one instruction
+    mcFile << "Memory: " << endl;
+    for (const auto &it : memory)
+    {
+        mcFile << it.first << " -> " << it.second << endl;
+    }
+    mcFile << "Text Segment:" << endl;
+    int address = 0;
+    vector<pair<string, int>> tokens;
 
     while (true)
     {
-        int tok = lex(); // Read next token
+        int tok = lex();
+        if (tok == tok_directive)
+        {
+            if (directive == "text")
+            {
+                isCode = true;
+            }
+            else if (directive == "data")
+                isCode = false;
+        }
 
+        if (isCode)
+        {
+            if (tok == tok_EOF)
+            {
+                // If any tokens remain in the last line then process them
+                if (!tokens.empty())
+                {
+                    processInstruction(tokens, mcFile, address);
+                }
+                break;
+            }
+
+            if (tok == tok_newline)
+            {
+                // Process the collectted tokens when a newline is reached
+                if (!tokens.empty())
+                {
+                    processInstruction(tokens, mcFile, address);
+                    tokens.clear();
+                }
+            }
+            else
+            {
+                // Store token as a string for processing
+                if (tok == tok_operator)
+                {
+                    tokens.push_back({Operator, tok_operator});
+                }
+                else if (tok == tok_register)
+                {
+                    tokens.push_back({"x" + to_string(registerValue), tok_register});
+                }
+                else if (tok == tok_immediate)
+                {
+                    tokens.push_back({immediateValue, tok_immediate});
+                }
+                else if (tok == tok_label)
+                {
+                    tokens.push_back({label, tok_label});
+                }
+                else if (tok == tok_label2)
+                {
+                    tokens.push_back({label, tok_label2});
+                }
+            }
+        }
         if (tok == tok_EOF)
-        {
-            // If any tokens remain for the last line, process them
-            if (!tokens.empty())
-            {
-                processInstruction(tokens, mcFile, address);
-            }
-            break; // Stop reading
-        }
-
-        if (tok == tok_newline)
-        {
-            // Process the accumulated tokens when a newline is reached
-            if (!tokens.empty())
-            {
-                processInstruction(tokens, mcFile, address);
-                tokens.clear(); // Clear tokens for next instruction
-            }
-        }
-        else
-        {
-            // Store token as a string for processing
-            if (tok == tok_operator)
-            {
-                tokens.push_back({Operator, tok_operator});
-            }
-            else if (tok == tok_register)
-            {
-                tokens.push_back({"x" + to_string(registerValue), tok_register});
-            }
-            else if (tok == tok_immediate)
-            {
-                tokens.push_back({immediateValue, tok_immediate});
-            }
-            else if (tok == tok_label)
-            {
-                tokens.push_back({label, tok_label});
-            }
-            else if (tok == tok_label2)
-            {
-                tokens.push_back({label, tok_label2});
-            }
-        }
+            break;
     }
 
+    mcFile << "0x" << std::hex << address << " " << "Terminate";
     mcFile.close();
+}
+
+int data_address = 0x10000000;
+
+string decimalToHex(int decimal)
+{
+    char hexStr[11];
+    sprintf(hexStr, "0x%08X", decimal);
+    return string(hexStr);
+}
+
+string decimalToHexDword(unsigned long long decimal)
+{
+    char hexStr[19];
+    sprintf(hexStr, "0x%016llX", decimal);
+    return string(hexStr);
 }
 
 void preParse()
@@ -508,60 +564,146 @@ void preParse()
     asmFile.clear();
     asmFile.seekg(0);
 
-    int address = 0;                  // Starting address for instructions.
-    vector<pair<string, int>> tokens; // Accumulate tokens for the current line.
+    int address = 0;
+    vector<pair<string, int>> tokens;
 
     while (true)
     {
-        int tok = lex(); // Get the next token from the input.
-
-        if (tok == tok_EOF)
+        int tok = lex();
+        if (tok == tok_directive)
         {
-            // End-of-file reached: process any remaining tokens.
-            if (!tokens.empty())
+            if (directive == "data")
             {
-                // If the first token is a label, store it.
-                if (tokens[0].second == tok_label)
-                {
-                    labelMap[tokens[0].first] = address;
-                    // Optionally remove the label token if there's also an instruction on the line.
-                    tokens.erase(tokens.begin());
-                }
-                // If there are remaining tokens (an instruction), update address.
-                if (!tokens.empty())
-                    address += 4;
+                istext = false;
             }
-            break;
+            else if (directive == "text")
+            {
+                istext = true;
+            }
         }
-
-        if (tok == tok_newline)
+        if (istext)
         {
-            if (!tokens.empty())
+            if (tok == tok_EOF)
             {
-                // Check if the line begins with a label.
-                if (tokens[0].second == tok_label)
-                {
-                    labelMap[tokens[0].first] = address;
-                    // Remove the label token so that the rest of the tokens form the instruction.
-                    tokens.erase(tokens.begin());
-                }
-                // If there is an instruction on this line, update the address.
+                // End-of-file reached: process any remaining tokens.
                 if (!tokens.empty())
-                    address += 4;
+                {
+                    // If the first token is a label, store it.
+                    if (tokens[0].second == tok_label)
+                    {
+                        labelMap[tokens[0].first] = address;
+
+                        tokens.erase(tokens.begin());
+                    }
+
+                    if (!tokens.empty())
+                        address += 4;
+                }
+                break;
             }
-            tokens.clear();
+
+            if (tok == tok_newline)
+            {
+                if (!tokens.empty())
+                {
+                    // Check if the line begins with a label.
+                    if (tokens[0].second == tok_label)
+                    {
+                        labelMap[tokens[0].first] = address;
+
+                        tokens.erase(tokens.begin());
+                    }
+
+                    if (!tokens.empty())
+                        address += 4;
+                }
+                tokens.clear();
+            }
+            else
+            {
+                // Store tokens (only for operator, register, immediate, and label).
+                if (tok == tok_operator)
+                    tokens.push_back({Operator, tok_operator});
+                else if (tok == tok_register)
+                    tokens.push_back({"x" + to_string(registerValue), tok_register});
+                else if (tok == tok_immediate)
+                    tokens.push_back({immediateValue, tok_immediate});
+                else if (tok == tok_label)
+                    tokens.push_back({label, tok_label});
+            }
         }
         else
         {
-            // Store tokens (only for operator, register, immediate, and label).
-            if (tok == tok_operator)
-                tokens.push_back({Operator, tok_operator});
-            else if (tok == tok_register)
-                tokens.push_back({"x" + to_string(registerValue), tok_register});
-            else if (tok == tok_immediate)
-                tokens.push_back({immediateValue, tok_immediate});
-            else if (tok == tok_label)
-                tokens.push_back({label, tok_label});
+            if (tok == tok_label)
+            {
+                tok = lex();
+                if (tok == tok_directive)
+                {
+                    tok = lex();
+                    while (tok == tok_immediate)
+                    {
+                        if (directive == "word")
+                        {
+
+                            int imm = stoi(immediateValue, nullptr, 0);
+                            immediateValue = decimalToHex(imm);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(8, 2);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(6, 2);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(4, 2);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(2, 2);
+                        }
+
+                        else if (directive == "byte")
+                        {
+
+                            int imm = stoi(immediateValue, nullptr, 0);
+                            immediateValue = decimalToHex(imm);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(8, 2);
+                        }
+
+                        else if (directive == "half")
+                        {
+
+                            int imm = stoi(immediateValue, nullptr, 0);
+                            immediateValue = decimalToHex(imm);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(8, 2);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(6, 2);
+                        }
+
+                        else if (directive == "dword")
+                        {
+
+                            int imm = stoi(immediateValue, nullptr, 0);
+                            immediateValue = decimalToHexDword(imm);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(16, 2);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(14, 2);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(12, 2);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(10, 2);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(8, 2);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(6, 2);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(4, 2);
+
+                            memory[decimalToHex(data_address++)] = immediateValue.substr(2, 2);
+                        }
+
+                        tok = lex();
+                    }
+                }
+            }
         }
     }
 }
@@ -575,12 +717,6 @@ int main()
         return 1;
     }
     preParse();
-
-    cout << "Label Map Contents:" << endl;
-    for (const auto &entry : labelMap)
-    {
-        cout << entry.first << " -> " << entry.second << endl;
-    }
 
     asmFile.clear();
     asmFile.seekg(0);
