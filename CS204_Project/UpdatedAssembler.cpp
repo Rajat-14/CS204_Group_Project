@@ -21,6 +21,7 @@ enum Token
     tok_EOF = -5,
     tok_directive = -6,
     tok_newline = -7,
+    tok_string = -8,
 };
 ifstream asmFile;
 string Operator;
@@ -28,6 +29,7 @@ string label;
 string directive;
 int registerValue = -1;
 string immediateValue;
+string literal;
 unordered_set<string> operators = {"add", "and", "or", "sll", "slt", "sra", "srl", "sub", "xor", "mul", "div", "rem", "addi", "andi", "ori", "xori", "slli", "srli", "srai", "slti", "sltiu", "lb", "ld", "lh", "lw", "jalr", "sb", "sw", "sd", "sh", "beq", "bne", "bge", "blt", "auipc", "lui", "jal"};
 unordered_map<string, int> reg = {
     {"ra", 1}, {"sp", 2}, {"gp", 3}, {"tp", 4}, {"t0", 5}, {"t1", 6}, {"t2", 7}, {"s0", 8}, {"s1", 9}, {"a0", 10}, {"a1", 11}, {"a2", 12}, {"a3", 13}, {"a4", 14}, {"a5", 15}, {"a6", 16}, {"a7", 17}, {"s2", 18}, {"s3", 19}, {"s4", 20}, {"s5", 21}, {"s6", 22}, {"s7", 23}, {"s8", 24}, {"s9", 25}, {"s10", 26}, {"s11", 27}, {"t3", 28}, {"t4", 29}, {"t5", 30}, {"t6", 31}};
@@ -46,6 +48,21 @@ int lex()
             return tok_newline;
         }
         lastChar = asmFile.get();
+    }
+
+    if (lastChar == '"')
+    {
+        literal = "";
+        lastChar = asmFile.get();
+        while (lastChar != '"' && lastChar != EOF)
+        {
+            literal += lastChar;
+            lastChar = asmFile.get();
+        }
+        if (lastChar == EOF)
+            return tok_EOF;
+        lastChar = asmFile.get();
+        return tok_string;
     }
 
     // Skip commas.
@@ -700,6 +717,24 @@ void preParse()
                             memory[decimalToHex(data_address++)] = immediateValue.substr(2, 2);
                         }
 
+                        tok = lex();
+                    }
+
+                    if (directive == "asciiz")
+                    {
+
+                        string str = literal;
+                        if (!str.empty() && str.front() == '"' && str.back() == '"')
+                        {
+                            str = str.substr(1, str.size() - 2);
+                        }
+                        for (int i = 0; i < str.size(); i++)
+                        {
+                            int conv = str[i];
+                            string toHex = decimalToHex(conv).substr(8, 2);
+                            memory[decimalToHex(data_address++)] = toHex;
+                        }
+                        memory[decimalToHex(data_address++)] = "00";
                         tok = lex();
                     }
                 }
