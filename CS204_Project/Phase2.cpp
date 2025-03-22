@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <algorithm>
 
 using namespace std;
 
@@ -17,6 +18,7 @@ unsigned int RY;
 int long long memoryData;
 bool is_PCupdated_while_execution = false;
 int R[32] = {0}; // Register file
+long long int clock=0;
 
 struct instruction_register
 {
@@ -201,6 +203,7 @@ void fetch()
     string pc = currentPC_str;
     instructionRegister = instruction_map[pc];
     std::cout << "FETCH: Instruction " << instructionRegister << "from PC = " << pc << endl;
+    clock++;
 }
 
 void decode()
@@ -372,6 +375,7 @@ void decode()
         cout << "DECODE: Unsupported ir.opcode 0x" << hex << ir.opcode << dec << endl;
         break;
     }
+    clock++;
 }
 
 // Mux A selection: choose either register ir.rs1 or the current PC.
@@ -418,8 +422,15 @@ void execute()
             aluResult = operandA + operandB;
         else if (ir.operation == "SUB")
             aluResult = operandA - operandB;
+        
         else if (ir.operation == "AND")
             aluResult = operandA & operandB;
+        else if (ir.operation=="MUL")
+            aluResult = operandA * operandB;
+        else if (ir.operation == "DIV")
+            aluResult = operandA / operandB;
+        else if (ir.operation == "REM")
+            aluResult = operandA % operandB;
         else if (ir.operation == "OR")
             aluResult = operandA | operandB;
         else if (ir.operation == "XOR")
@@ -521,6 +532,7 @@ void execute()
     {
         cout << "EXECUTE: Unsupported ir.opcode in ALU simulation." << endl;
     }
+    clock++;
 }
 
 void memory_access()
@@ -577,6 +589,7 @@ void memory_access()
     {
         string addressStr;
         string data = convert_int2hexstr(RM);
+        reverse(data.begin(), data.end());
         
         if (data.size() < 16)
         {
@@ -592,7 +605,7 @@ void memory_access()
         if (ir.funct3 == 0)
         { // SB
             addressStr = convert_int2hexstr(aluResult);
-            data_map[addressStr] = data;
+            data_map[addressStr] = data.substr(0,2);
         }
         else if (ir.funct3 == 1)
         { // SH
@@ -648,17 +661,20 @@ void memory_access()
     {
         RY = aluResult;
     }
+    clock++;
+    return ;
 }
 
 void write_back()
 {
     if(ir.opcode==0x23 || ir.opcode==0x63){
         cout << "WB: No write back required\n";
-        return;
     }else{
         R[ir.rd] = RY;
         cout << "WB: Wrote " << RY << " to R[" << ir.rd << "]\n";
     }
+    clock++;
+    return;
 }
 
 int main()
@@ -673,8 +689,7 @@ int main()
     }
 
     cout << "\nData Memory:\n";
-    for (map<string, string>::const_iterator it = data_map.begin();
-         it != data_map.end(); ++it)
+    for (map<string, string>::const_iterator it = data_map.begin();it != data_map.end(); ++it)
     {
         cout << "Address: " << it->first
              << " -> Value: " << it->second << "\n";
@@ -690,6 +705,7 @@ int main()
         if(is_PCupdated_while_execution==false){
             currentPC_str = IAG();
         }
+        cout<<"Clock: "<<clock<<endl;
         cout << "----------------------------------------------------------------\n";
     }
 
