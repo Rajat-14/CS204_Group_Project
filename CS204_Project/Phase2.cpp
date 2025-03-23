@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <algorithm>
+#include <iomanip>
 
 using namespace std;
 
@@ -12,13 +13,14 @@ map<string, string> data_map;
 string instructionRegister;
 string currentPC_str = "0x0";
 unsigned int returnAddress = 0;
-unsigned int RM;
+long long int RM;
 int long long aluResult;
-unsigned int RY;
+long long int RY;
 int long long memoryData;
 bool is_PCupdated_while_execution = false;
 int R[32] = {0}; // Register file
-long long int clock=0;
+
+long long int clockCycle = 0;
 
 struct instruction_register
 {
@@ -101,30 +103,49 @@ void load_mc_file(const string &filename)
     file.close();
 }
 
-string convert_int2hexstr(unsigned int num)
+std::string convert_int2hexstr(long long num, int numBits)
 {
-    stringstream ss;
-    ss << "0x" << hex << num;
+    if (numBits <= 0 || numBits > 64)
+    {
+        throw std::invalid_argument("numBits must be between 1 and 64.");
+    }
+    // Create a mask for the desired number of bits.
+    uint64_t mask = (numBits == 64) ? ~0ULL : ((1ULL << numBits) - 1);
+    // Apply the mask to get the two's complement representation.
+    uint64_t val = static_cast<uint64_t>(num) & mask;
+
+    int hexDigits = (numBits + 3) / 4;
+
+    std::stringstream ss;
+    ss << "0x"
+       << std::uppercase
+       << std::setw(hexDigits)
+       << std::setfill('0')
+       << std::hex << val;
     return ss.str();
 }
 
-long long convert_hexstr2int(const std::string &hexstr)
+long long convert_hexstr2int(const std::string &hexstr, int numBits)
 {
-    long long result = 0;
+    if (numBits <= 0 || numBits > 64)
+    {
+        throw std::invalid_argument("numBits must be between 1 and 64.");
+    }
+
+    uint64_t result = 0;
     int start = 0;
 
-    // Check for optional "0x" or "0X" prefix.
-    if (hexstr.size() >= 2 && hexstr[0] == '0' && (hexstr[1] == 'x' || hexstr[1] == 'X'))
+    if (hexstr.size() >= 2 && hexstr[0] == '0' &&
+        (hexstr[1] == 'x' || hexstr[1] == 'X'))
     {
         start = 2;
     }
 
     // Process each character in the string.
-    for (int i = start; i < hexstr.size(); ++i)
+    for (size_t i = start; i < hexstr.size(); ++i)
     {
         char c = hexstr[i];
         result *= 16;
-
         if (c >= '0' && c <= '9')
         {
             result += c - '0';
@@ -143,7 +164,27 @@ long long convert_hexstr2int(const std::string &hexstr)
         }
     }
 
-    return result;
+    // Determine the sign bit. For numBits == 64, use 1ULL << 63.
+    uint64_t signBit = (numBits == 64) ? (1ULL << 63) : (1ULL << (numBits - 1));
+
+    if (result & signBit)
+    {
+        if (numBits == 64)
+        {
+            // For 64 bits, casting from uint64_t to int64_t yields the proper two's complement.
+            return static_cast<int64_t>(result);
+        }
+        else
+        {
+            // For less than 64 bits, subtract 2^(numBits).
+            uint64_t subtractVal = (1ULL << numBits);
+            return static_cast<long long>(result - subtractVal);
+        }
+    }
+    else
+    {
+        return static_cast<long long>(result);
+    }
 }
 
 unsigned int convert_binstr2int(const std::string &binstr)
@@ -158,7 +199,7 @@ unsigned int convert_binstr2int(const std::string &binstr)
         }
         else if (c != '0')
         {
-            // If the character is neither '0' nor '1', throw an error.
+
             throw std::invalid_argument("Binary string contains invalid characters. Only '0' and '1' are allowed.");
         }
     }
@@ -166,10 +207,18 @@ unsigned int convert_binstr2int(const std::string &binstr)
     return result;
 }
 
+string convert_PC2hex(unsigned int num)
+{
+    // Convert PC to hex string.
+    stringstream ss;
+    ss << "0x" << hex << num;
+    return ss.str();
+}
+
 string IAG()
 {
     // Convert current PC hex to integer.
-    unsigned int currentPC = convert_hexstr2int(currentPC_str);
+    unsigned int currentPC = convert_hexstr2int(currentPC_str, 32);
     unsigned int nextPC = currentPC + 4; // Default next PC if no branch or jump instructions
 
     // Adjust nextPC for branch and jump instructions.
@@ -195,15 +244,15 @@ string IAG()
         nextPC = (R[ir.rs1] + ir.imm) & ~1; // Ensure the target address is even.
     }
 
-    return convert_int2hexstr(nextPC);
+    return convert_PC2hex(nextPC);
 }
 
 void fetch()
 {
     string pc = currentPC_str;
     instructionRegister = instruction_map[pc];
-    std::cout << "FETCH: Instruction " << instructionRegister << "from PC = " << pc << endl;
-    clock++;
+    cout << "FETCH: Instruction " << instructionRegister << "from PC = " << pc << endl;
+    clockCycle++;
 }
 
 void decode()
@@ -324,7 +373,7 @@ void decode()
     // SB-type
     case 0x63:
         cout << instruction << endl;
-        // Construct branch immediate from scattered bits.
+
         ir.imm = (((instruction >> 7) & 0x1) << 11) |
                  (((instruction >> 8) & 0xF) << 1) |
                  (((instruction >> 25) & 0x3F) << 5) |
@@ -375,7 +424,7 @@ void decode()
         cout << "DECODE: Unsupported ir.opcode 0x" << hex << ir.opcode << dec << endl;
         break;
     }
-    clock++;
+    clockCycle++;
 }
 
 // Mux A selection: choose either register ir.rs1 or the current PC.
@@ -422,10 +471,10 @@ void execute()
             aluResult = operandA + operandB;
         else if (ir.operation == "SUB")
             aluResult = operandA - operandB;
-        
+
         else if (ir.operation == "AND")
             aluResult = operandA & operandB;
-        else if (ir.operation=="MUL")
+        else if (ir.operation == "MUL")
             aluResult = operandA * operandB;
         else if (ir.operation == "DIV")
             aluResult = operandA / operandB;
@@ -510,8 +559,8 @@ void execute()
     { // AUIPC
         // ir.imm is shifted left by 12 bits and added to PC.
         aluResult = ir.imm;
-        // now we add this value to current PC
-        aluResult = aluResult + convert_hexstr2int(currentPC_str);
+
+        aluResult = aluResult + convert_hexstr2int(currentPC_str, 32);
         cout << "EXECUTE: AUIPC operation result is " << aluResult << endl;
     }
     else if (ir.opcode == 0x6F)
@@ -532,7 +581,7 @@ void execute()
     {
         cout << "EXECUTE: Unsupported ir.opcode in ALU simulation." << endl;
     }
-    clock++;
+    clockCycle++;
 }
 
 void memory_access()
@@ -545,42 +594,42 @@ void memory_access()
         string res = "";
         if (ir.funct3 == 0)
         { // LB
-            addressStr=convert_int2hexstr(aluResult);
+            addressStr = convert_int2hexstr(aluResult, 32);
             res += data_map[addressStr];
-            memoryData = convert_hexstr2int(res);
+            memoryData = convert_hexstr2int(res, 8);
         }
         else if (ir.funct3 == 1)
         { // LH
             long long int x = aluResult + 1;
             while (x >= aluResult)
             {
-                addressStr = convert_int2hexstr(x);
+                addressStr = convert_int2hexstr(x, 32);
                 res += data_map[addressStr];
                 x--;
             }
-            memoryData = convert_hexstr2int(res);
+            memoryData = convert_hexstr2int(res, 16);
         }
         else if (ir.funct3 == 2)
         { // LW
             long long int x = aluResult + 3;
             while (x >= aluResult)
             {
-                addressStr = convert_int2hexstr(x);
+                addressStr = convert_int2hexstr(x, 32);
                 res += data_map[addressStr];
                 x--;
             }
-            memoryData = convert_hexstr2int(res);
+            memoryData = convert_hexstr2int(res, 32);
         }
         else if (ir.funct3 == 3)
         { // LD
             long long int x = aluResult + 7;
             while (x >= aluResult)
             {
-                addressStr = convert_int2hexstr(x);
+                addressStr = convert_int2hexstr(x, 32);
                 res += data_map[addressStr];
                 x--;
             }
-            memoryData = convert_hexstr2int(res);
+            memoryData = convert_hexstr2int(res, 64);
         }
         cout << "MEM: Loaded data " << memoryData << " from memory address " << aluResult << endl;
     }
@@ -588,47 +637,42 @@ void memory_access()
     else if (ir.opcode == 0x23)
     {
         string addressStr;
-        string data = convert_int2hexstr(RM);
-        reverse(data.begin(), data.end());
-        
-        if (data.size() < 16)
-        {
-            string s = "";
-            for (int i = 0; i < 16 - data.size(); ++i)
-            {
-                s += "0";
-            }
-            data = s + data.substr(2);
-        }
-        
-
+        string data;
+        long long int int_address = aluResult;
         if (ir.funct3 == 0)
         { // SB
-            addressStr = convert_int2hexstr(aluResult);
-            data_map[addressStr] = data.substr(0,2);
+            data = convert_int2hexstr(RM, 8);
+            addressStr = convert_int2hexstr(int_address, 32);
+            data_map[addressStr] = data.substr(2, 2);
         }
         else if (ir.funct3 == 1)
         { // SH
-            for (int i = 0; i < 2; ++i)
+            data = convert_int2hexstr(RM, 16);
+            for (int i = 1; i >= 0; --i)
             {
-                addressStr = convert_int2hexstr(aluResult + i);
-                data_map[addressStr] = data.substr(2 * i, 2);
+                addressStr = convert_int2hexstr(int_address, 32);
+                int_address += 1;
+                data_map[addressStr] = data.substr(2 * i + 2, 2);
             }
         }
         else if (ir.funct3 == 2)
         { // SW
-            for (int i = 0; i < 4; ++i)
+            data = convert_int2hexstr(RM, 32);
+            for (int i = 3; i >= 0; --i)
             {
-                addressStr = convert_int2hexstr(aluResult + i);
-                data_map[addressStr] = data.substr(2 * i, 2);
+                addressStr = convert_int2hexstr(int_address, 32);
+                int_address += 1;
+                data_map[addressStr] = data.substr(2 * i + 2, 2);
             }
         }
         else if (ir.funct3 == 3)
         { // SD
-            for (int i = 0; i < 8; ++i)
+            data = convert_int2hexstr(RM, 64);
+            for (int i = 7; i >= 0; --i)
             {
-                addressStr = convert_int2hexstr(aluResult + i);
-                data_map[addressStr] = data.substr(2 * i, 2);
+                addressStr = convert_int2hexstr(int_address, 32);
+                int_address += 1;
+                data_map[addressStr] = data.substr(2 * i + 2, 2);
             }
         }
         cout << "MEM: Stored data " << RM << " at memory address " << aluResult << endl;
@@ -650,7 +694,9 @@ void memory_access()
     else if (ir.opcode == 0x67)
     { // JALR
         RY = returnAddress;
-    }else if(ir.opcode==0x23){ // Store instruction
+    }
+    else if (ir.opcode == 0x23)
+    { // Store instruction
         RY = 0;
     }
     else if (ir.opcode == 0x63)
@@ -661,24 +707,33 @@ void memory_access()
     {
         RY = aluResult;
     }
-    clock++;
-    return ;
+    clockCycle++;
+    return;
 }
 
 void write_back()
 {
-    if(ir.opcode==0x23 || ir.opcode==0x63){
+    if (ir.opcode == 0x23 || ir.opcode == 0x63)
+    {
         cout << "WB: No write back required\n";
-    }else{
+    }
+    else
+    {
         R[ir.rd] = RY;
         cout << "WB: Wrote " << RY << " to R[" << ir.rd << "]\n";
     }
-    clock++;
+    R[0] = 0; // x0 is always 0
+    clockCycle++;
     return;
 }
 
 int main()
 {
+    // Initializing the register file
+    R[2] = 2147483612; // Stack pointer
+    R[3] = 268435456;  // Frame pointer
+    R[10] = 1;
+    R[11] = 2147483612;
     load_mc_file("input.mc");
 
     cout << "Instruction Memory:\n";
@@ -689,12 +744,13 @@ int main()
     }
 
     cout << "\nData Memory:\n";
-    for (map<string, string>::const_iterator it = data_map.begin();it != data_map.end(); ++it)
+    for (map<string, string>::const_iterator it = data_map.begin(); it != data_map.end(); ++it)
     {
         cout << "Address: " << it->first
              << " -> Value: " << it->second << "\n";
     }
 
+    cout << "----------------------------------------------------------------------------------------------------\n";
     while (instruction_map[currentPC_str] != "Terminate")
     {
         fetch();
@@ -702,11 +758,17 @@ int main()
         execute();
         memory_access();
         write_back();
-        if(is_PCupdated_while_execution==false){
+        if (is_PCupdated_while_execution == false)
+        {
             currentPC_str = IAG();
         }
-        cout<<"Clock: "<<clock<<endl;
-        cout << "----------------------------------------------------------------\n";
+        cout << "Clock: " << clockCycle << endl;
+        for (auto it : R)
+        {
+            cout << it << " ";
+        }
+        cout << endl;
+        cout << "----------------------------------------------------------------------------------------------------\n";
     }
 
     // write data memory in a file named data_memory.txt
@@ -721,7 +783,7 @@ int main()
          it != data_map.end(); ++it)
     {
         data_memory_file << "Address: " << it->first
-             << " -> Value: " << it->second << "\n";
+                         << " -> Value: " << it->second << "\n";
     }
 
     return 0;
