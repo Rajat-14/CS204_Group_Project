@@ -1,5 +1,5 @@
 #include "simulator.h"
-#include "utils.h"    // For conversion functions.
+#include "utils.h" // For conversion functions.
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -41,6 +41,34 @@ int main()
         execute();
         memory_access();
         write_back();
+        if (numStallNeeded == 2)
+        {
+            memory_access();
+            write_back();
+            write_back();
+            stallNeeded = false;
+            numStallNeeded = 0;
+            if (is_PCupdated_while_execution == false)
+            {
+                currentPC_str = IAG();
+            }
+            clockCycle+=2;
+            continue;
+        }
+        else if (numStallNeeded == 1)
+        {
+            write_back();
+            stallNeeded = false;
+            numStallNeeded = 0;
+            if (is_PCupdated_while_execution == false)
+            {
+                currentPC_str = IAG();
+            }
+            clockCycle+=1;
+            continue;
+        }
+       
+        clockCycle++;
         if (is_PCupdated_while_execution == false)
         {
             currentPC_str = IAG();
@@ -68,6 +96,9 @@ int main()
         data_memory_file << "Address: " << it->first
                          << " -> Value: " << it->second << "\n";
     }
+
+    cout<<"Total Stalls are "<<stallCount<<endl;
+    cout << "Clock: " << clockCycle << endl;
 
     return 0;
 }

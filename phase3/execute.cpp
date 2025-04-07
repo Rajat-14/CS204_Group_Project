@@ -4,7 +4,7 @@
 
 void DataHazard()
 {
-    // we have to identify producer consumer relationship
+    // we  identify producer consumer relationship
     // producer can be ex_mem or mem_wb 
     //consumer will be in id_ex stage
     if(id_ex.rs1 == ex_mem.rd || id_ex.rs2 == ex_mem.rd){
@@ -581,5 +581,3 @@ void write_back()
     clockCycle++;
     return;
 }
-
-

@@ -14,6 +14,8 @@ long long int memoryData;
 bool is_PCupdated_while_execution = false;
 int R[32] = {0};
 long long int clockCycle = 0;
+bool stallNeeded=false;
+int numStallNeeded=0;
 instruction_register ir;
 
 
@@ -24,10 +26,10 @@ EX_MEM ex_mem = {0, 0, 0, 0, "", "", false};
 MEM_WB mem_wb = {0, 0, 0, "", "", false};
 
 //---------------- Knobs (Default Settings) ----------------
-bool enablePipelining = true;
-bool enableDataForwarding = true;
-bool printRegisterFile = true;
-bool printPipelineTrace = true;
+bool enablePipelining = false;
+bool enableDataForwarding = false;
+bool printRegisterFile = false;
+bool printPipelineTrace = false;
 int traceInstructionNumber = 0;  // 0 means disabled
 bool printBranchPredictor = false;
 

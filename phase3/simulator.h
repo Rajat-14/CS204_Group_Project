@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <map>
+#include <bits/stdc++.h>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -85,6 +86,8 @@ extern EX_MEM ex_mem;
 extern MEM_WB mem_wb;
 
 //---------------- Knobs / Configuration ----------------
+extern bool stallNeeded;
+extern int numStallNeeded;
 extern bool enablePipelining;       // Knob1
 extern bool enableDataForwarding;   // Knob2
 extern bool printRegisterFile;      // Knob3
@@ -102,6 +105,7 @@ extern unsigned long stallCount;
 extern unsigned long dataHazardCount;
 extern unsigned long controlHazardCount;
 extern unsigned long branchMispredictionCount;
+
 
 //---------------- Function Prototypes ----------------
 void load_mc_file(const string &filename);
