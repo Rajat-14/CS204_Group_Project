@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <map>
-#include <bits/stdc++.h>
+#include <cstdint>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -25,9 +25,11 @@ extern long long int memoryData;
 extern bool is_PCupdated_while_execution;
 extern int R[32];
 extern long long int clockCycle;
+extern bool pipelineEnd;
 
 //---------------- Instruction Register (Phase 2) ----------------
-struct instruction_register {
+struct instruction_register
+{
     string operation;
     int opcode;
     int rd;
@@ -40,13 +42,15 @@ struct instruction_register {
 extern instruction_register ir;
 
 //---------------- Pipeline Register Structures (Phase 3) ----------------
-struct IF_ID {
+struct IF_ID
+{
     string instruction;
     string pc;
     bool isValid;
 };
 
-struct ID_EX {
+struct ID_EX
+{
     int opcode;
     int rd;
     int rs1;
@@ -61,7 +65,8 @@ struct ID_EX {
     bool valid;
 };
 
-struct EX_MEM {
+struct EX_MEM
+{
     int aluResult;
     int rd;
     int opcode;
@@ -71,7 +76,8 @@ struct EX_MEM {
     bool valid;
 };
 
-struct MEM_WB {
+struct MEM_WB
+{
     int writeData;
     int rd;
     int opcode;
@@ -88,12 +94,12 @@ extern MEM_WB mem_wb;
 //---------------- Knobs / Configuration ----------------
 extern bool stallNeeded;
 extern int numStallNeeded;
-extern bool enablePipelining;       // Knob1
-extern bool enableDataForwarding;   // Knob2
-extern bool printRegisterFile;      // Knob3
-extern bool printPipelineTrace;     // Knob4
-extern int  traceInstructionNumber; // Knob5 (0 means disabled)
-extern bool printBranchPredictor;   // Knob6
+extern bool enablePipelining;      // Knob1
+extern bool enableDataForwarding;  // Knob2
+extern bool printRegisterFile;     // Knob3
+extern bool printPipelineTrace;    // Knob4
+extern int traceInstructionNumber; // Knob5 (0 means disabled)
+extern bool printBranchPredictor;  // Knob6
 
 //---------------- Statistics Counters ----------------
 extern unsigned long totalCycles;
@@ -105,7 +111,6 @@ extern unsigned long stallCount;
 extern unsigned long dataHazardCount;
 extern unsigned long controlHazardCount;
 extern unsigned long branchMispredictionCount;
-
 
 //---------------- Function Prototypes ----------------
 void load_mc_file(const string &filename);

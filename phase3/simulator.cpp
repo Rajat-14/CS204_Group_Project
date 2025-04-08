@@ -1,23 +1,23 @@
 #include "simulator.h"
-#include "utils.h"  // Include header only
+#include "utils.h" // Include header only
 
 //---------------- Global Variables Definitions (Phase 2) ----------------
 map<string, string> instruction_map;
 map<string, string> data_map;
 string instructionRegister;
 string currentPC_str = "0x0";
-unsigned int returnAddress=0;
+unsigned int returnAddress = 0;
 long long int RM;
-long long int aluResult ;
+long long int aluResult;
 long long int RY;
 long long int memoryData;
 bool is_PCupdated_while_execution = false;
 int R[32] = {0};
 long long int clockCycle = 0;
-bool stallNeeded=false;
-int numStallNeeded=0;
+bool stallNeeded = false;
+int numStallNeeded = 0;
+bool pipelineEnd = false;
 instruction_register ir;
-
 
 //---------------- Pipeline Registers (Phase 3) ----------------
 IF_ID if_id = {"", "", false};
@@ -30,7 +30,7 @@ bool enablePipelining = false;
 bool enableDataForwarding = false;
 bool printRegisterFile = false;
 bool printPipelineTrace = false;
-int traceInstructionNumber = 0;  // 0 means disabled
+int traceInstructionNumber = 0; // 0 means disabled
 bool printBranchPredictor = false;
 
 //---------------- Statistics Counters ----------------

@@ -34,13 +34,26 @@ int main()
     }
 
     cout << "----------------------------------------------------------------------------------------------------\n";
-    while (instruction_map[currentPC_str] != "Terminate")
+    while (instruction_map[currentPC_str] != "Terminate" || if_id.isValid || id_ex.valid || ex_mem.valid || mem_wb.valid)
     {
-        fetch();
-        decode();
-        execute();
-        memory_access();
+        if (pipelineEnd)
+        {
+            write_back();
+            memory_access();
+            execute();
+            clockCycle++;
+            write_back();
+            memory_access();
+            clockCycle++;
+            write_back();
+            clockCycle++;
+            break;
+        }
         write_back();
+        memory_access();
+        execute();
+        decode();
+        fetch();
         if (numStallNeeded == 2)
         {
             memory_access();
@@ -52,7 +65,7 @@ int main()
             {
                 currentPC_str = IAG();
             }
-            clockCycle+=2;
+            clockCycle += 2;
             continue;
         }
         else if (numStallNeeded == 1)
@@ -64,22 +77,22 @@ int main()
             {
                 currentPC_str = IAG();
             }
-            clockCycle+=1;
+            clockCycle += 1;
             continue;
         }
-       
+
         clockCycle++;
         if (is_PCupdated_while_execution == false)
         {
             currentPC_str = IAG();
         }
-        cout << "Clock: " << clockCycle << endl;
-        for (auto it : R)
-        {
-            cout << it << " ";
-        }
-        cout << endl;
-        cout << "----------------------------------------------------------------------------------------------------\n";
+        // cout << "Clock: " << clockCycle << endl;
+        // for (auto it : R)
+        // {
+        //     cout << it << " ";
+        // }
+        // cout << endl;
+        // cout << "----------------------------------------------------------------------------------------------------\n";
     }
 
     // write data memory in a file named data_memory.txt
@@ -97,7 +110,7 @@ int main()
                          << " -> Value: " << it->second << "\n";
     }
 
-    cout<<"Total Stalls are "<<stallCount<<endl;
+    cout << "Total Stalls are " << stallCount << endl;
     cout << "Clock: " << clockCycle << endl;
 
     return 0;
