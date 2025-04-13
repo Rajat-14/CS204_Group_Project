@@ -14,7 +14,6 @@ long long int memoryData;
 bool is_PCupdated_while_execution = false;
 int R[32] = {0};
 long long int clockCycle = 0;
-bool stallNeeded = false;
 int numStallNeeded = 0;
 bool pipelineEnd = false;
 instruction_register ir;

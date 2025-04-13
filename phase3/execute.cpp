@@ -7,16 +7,14 @@ void DataHazard()
     // we  identify producer consumer relationship
     // producer can be ex_mem or mem_wb
     // consumer will be in id_ex stage
-    if (id_ex.rs1 == ex_mem.rd || id_ex.rs2 == ex_mem.rd)
+    if (ex_mem.valid && (id_ex.rs1 == ex_mem.rd || id_ex.rs2 == ex_mem.rd))
     {
         if (!enableDataForwarding)
         {
             // if data forwarding is not enabled, we need to stall the pipeline
-            if_id.isValid = false; // stall the IF stage
-            id_ex.valid = false;   // stall the ID stage
-
+            numStallNeeded=2;
             cout << "Stalling pipeline due to data hazard\n";
-            stallCount++;
+            stallCount+=2;
         }
         else
         {
@@ -32,17 +30,16 @@ void DataHazard()
             }
         }
     }
-    else if (id_ex.rs1 == mem_wb.rd || id_ex.rs2 == mem_wb.rd)
+    else if (mem_wb.valid && (id_ex.rs1 == mem_wb.rd || id_ex.rs2 == mem_wb.rd))
     {
         // we have RAW data dependency with mem_wb stage
         if (!enableDataForwarding)
         {
             // we need to stall the pipeline
-            if_id.isValid = false; // stall the IF stage
-            id_ex.valid = false;   // stall the ID stage
+            numStallNeeded=1;
 
             cout << "Stalling pipeline due to data hazard\n";
-            stallCount++;
+            stallCount+=1;
         }
         else
         {
@@ -56,14 +53,6 @@ void DataHazard()
                 id_ex.operandB = mem_wb.writeData; // forward data to operandB
             }
         }
-    }
-    else
-    {
-        // no data hazard detected, allow the pipeline to proceed
-        if_id.isValid = true;
-        id_ex.valid = true;
-        ex_mem.valid = true;
-        mem_wb.valid = true;
     }
 }
 
@@ -107,6 +96,7 @@ void fetch()
     {
         if_id.isValid = false;
         pipelineEnd = true;
+        cout << "FETCH: Instruction " << instructionRegister << "from PC = " << pc << endl;
         return;
     }
     if_id.instruction = instructionRegister;
@@ -290,6 +280,7 @@ void decode()
         }
         id_ex.valid = true;
     }
+    if(numStallNeeded==0) DataHazard();
     // clockCycle++;
 }
 

@@ -30,14 +30,15 @@ int main()
     for (map<string, string>::const_iterator it = data_map.begin(); it != data_map.end(); ++it)
     {
         cout << "Address: " << it->first
-             << " -> Value: " << it->second << "\n";
+        << " -> Value: " << it->second << "\n";
     }
-
+    
     cout << "----------------------------------------------------------------------------------------------------\n";
     while (instruction_map[currentPC_str] != "Terminate" || if_id.isValid || id_ex.valid || ex_mem.valid || mem_wb.valid)
     {
         if (pipelineEnd)
         {
+            clockCycle++;
             write_back();
             memory_access();
             execute();
@@ -46,53 +47,71 @@ int main()
             memory_access();
             clockCycle++;
             write_back();
-            clockCycle++;
+            cout << "Clock: " << clockCycle << endl;
+            for (auto it : R)
+            {
+                cout << it << " ";
+            }
+            cout << endl;
+            cout << "----------------------------------------------------------------------------------------------------\n";
             break;
         }
+        clockCycle++;
         write_back();
         memory_access();
         execute();
         decode();
-        fetch();
+        if(numStallNeeded==0){fetch();}else{cout<<"StallsNeeded: "<<numStallNeeded<<endl;}
+
         if (numStallNeeded == 2)
         {
+            clockCycle++;
+            write_back();
             memory_access();
+            clockCycle++;
             write_back();
-            write_back();
-            stallNeeded = false;
+            decode();  
+            fetch();
             numStallNeeded = 0;
             if (is_PCupdated_while_execution == false)
             {
                 currentPC_str = IAG();
             }
-            clockCycle += 2;
+            // i want to update only do fetch, decode and execute in next cycle
+            ex_mem.valid=false;
+            mem_wb.valid=false;
             continue;
         }
         else if (numStallNeeded == 1)
         {
+            clockCycle++;
             write_back();
-            stallNeeded = false;
+            memory_access();
+            decode();
+            fetch();
             numStallNeeded = 0;
             if (is_PCupdated_while_execution == false)
             {
                 currentPC_str = IAG();
             }
-            clockCycle += 1;
+            // doing write back for next cycle in this one only and keeping flow same for next cycles
+            write_back();
+            ex_mem.valid=false;
+            mem_wb.valid=false;
             continue;
         }
 
-        clockCycle++;
         if (is_PCupdated_while_execution == false)
         {
             currentPC_str = IAG();
         }
-        // cout << "Clock: " << clockCycle << endl;
-        // for (auto it : R)
-        // {
-        //     cout << it << " ";
-        // }
-        // cout << endl;
-        // cout << "----------------------------------------------------------------------------------------------------\n";
+        cout << "Clock: " << clockCycle << endl;
+        for (auto it : R)
+        {
+            cout << it << " ";
+        }
+        cout << endl;
+        cout << "----------------------------------------------------------------------------------------------------\n";
     }
 
     // write data memory in a file named data_memory.txt

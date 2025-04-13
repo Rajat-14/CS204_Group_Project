@@ -92,7 +92,6 @@ extern EX_MEM ex_mem;
 extern MEM_WB mem_wb;
 
 //---------------- Knobs / Configuration ----------------
-extern bool stallNeeded;
 extern int numStallNeeded;
 extern bool enablePipelining;      // Knob1
 extern bool enableDataForwarding;  // Knob2
