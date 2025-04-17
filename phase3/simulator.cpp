@@ -20,9 +20,9 @@ instruction_register ir;
 
 //---------------- Pipeline Registers (Phase 3) ----------------
 IF_ID if_id = {"", "", false};
-ID_EX id_ex = {0, 0, 0, 0, 0, 0, 0, 0, 0, "", "", false};
-EX_MEM ex_mem = {0, 0, 0, 0, "", "", false};
-MEM_WB mem_wb = {0, 0, 0, "", "", false};
+ID_EX id_ex ={0, 0, 0, 0, 0, 0, 0, 0, 0, "", "", 0, false, false, "", false, false, 0, false, 0};
+EX_MEM ex_mem = {0, 0, false, false, false, 0, false, 0};
+MEM_WB mem_wb = {0, 0, false, false};
 
 //---------------- Knobs (Default Settings) ----------------
 bool enablePipelining = false;

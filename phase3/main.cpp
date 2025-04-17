@@ -42,9 +42,23 @@ int main()
             write_back();
             memory_access();
             execute();
+            cout << "Clock: " << clockCycle << endl;
+            for (auto it : R)
+            {
+                cout << it << " ";
+            }
+            cout << endl;
+            cout << "----------------------------------------------------------------------------------------------------\n";
             clockCycle++;
             write_back();
             memory_access();
+            cout << "Clock: " << clockCycle << endl;
+            for (auto it : R)
+            {
+                cout << it << " ";
+            }
+            cout << endl;
+            cout << "----------------------------------------------------------------------------------------------------\n";
             clockCycle++;
             write_back();
             cout << "Clock: " << clockCycle << endl;
@@ -68,10 +82,24 @@ int main()
             clockCycle++;
             write_back();
             memory_access();
+            cout << "Clock: " << clockCycle << endl;
+            for (auto it : R)
+            {
+                cout << it << " ";
+            }
+            cout << endl;
+            cout << "----------------------------------------------------------------------------------------------------\n";
             clockCycle++;
             write_back();
             decode();  
             fetch();
+            cout << "Clock: " << clockCycle << endl;
+            for (auto it : R)
+            {
+                cout << it << " ";
+            }
+            cout << endl;
+            cout << "----------------------------------------------------------------------------------------------------\n";
             numStallNeeded = 0;
             if (is_PCupdated_while_execution == false)
             {
@@ -89,6 +117,13 @@ int main()
             memory_access();
             decode();
             fetch();
+            cout << "Clock: " << clockCycle << endl;
+            for (auto it : R)
+            {
+                cout << it << " ";
+            }
+            cout << endl;
+            cout << "----------------------------------------------------------------------------------------------------\n";
             numStallNeeded = 0;
             if (is_PCupdated_while_execution == false)
             {

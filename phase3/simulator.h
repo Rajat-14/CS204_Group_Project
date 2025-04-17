@@ -62,28 +62,35 @@ struct ID_EX
     int operandB;
     string operation;
     string pc;
+    int aluOperation;
+    bool useImmediateForB;
     bool valid;
+    string signal;
+    bool memoryAccess;
+    bool memoryRequest;
+    int size;
+    bool writeBack;
+    int controlMuxY;
 };
 
 struct EX_MEM
 {
     int aluResult;
     int rd;
-    int opcode;
-    int funct3;
-    string operation;
-    string pc;
     bool valid;
+    bool memoryAccess;
+    bool memoryRequest;
+    int size;
+    bool writeBack;
+    int controlMuxY;
 };
 
 struct MEM_WB
 {
     int writeData;
     int rd;
-    int opcode;
-    string operation;
-    string pc;
     bool valid;
+    bool writeBack;
 };
 
 extern IF_ID if_id;

@@ -12,9 +12,9 @@ void DataHazard()
         if (!enableDataForwarding)
         {
             // if data forwarding is not enabled, we need to stall the pipeline
-            numStallNeeded=2;
+            numStallNeeded = 2;
             cout << "Stalling pipeline due to data hazard\n";
-            stallCount+=2;
+            stallCount += 2;
         }
         else
         {
@@ -23,10 +23,12 @@ void DataHazard()
             if (id_ex.rs1 == ex_mem.rd)
             {
                 id_ex.operandA = ex_mem.aluResult; // forward data to operandA
+                cout<<"Forwarding data from ex_mem to id_ex for rs1\n";
             }
             else
             {
                 id_ex.operandB = ex_mem.aluResult; // forward data to operandB
+                cout<<"Forwarding data from ex_mem to id_ex for rs2\n";
             }
         }
     }
@@ -36,10 +38,10 @@ void DataHazard()
         if (!enableDataForwarding)
         {
             // we need to stall the pipeline
-            numStallNeeded=1;
+            numStallNeeded = 1;
 
             cout << "Stalling pipeline due to data hazard\n";
-            stallCount+=1;
+            stallCount += 1;
         }
         else
         {
@@ -47,13 +49,71 @@ void DataHazard()
             if (id_ex.rs1 == mem_wb.rd)
             {
                 id_ex.operandA = mem_wb.writeData; // forward data to operandA
+                cout<<"Forwarding data from mem_wb to id_ex for rs1\n";
             }
             else
             {
                 id_ex.operandB = mem_wb.writeData; // forward data to operandB
+                cout<<"Forwarding data from mem_wb to id_ex for rs2\n";
             }
         }
     }
+}
+
+int ALU(int operand1, int operand2, int control)
+{
+    switch (control)
+    {
+    case 1: // ADD
+        return operand1 + operand2;
+        break;
+    case 2: // SUB
+        return operand1 - operand2;
+        break;
+    case 3: // AND
+        return operand1 & operand2;
+        break;
+    case 4: // MUL
+        return operand1 * operand2;
+        break;
+    case 5: // OR
+        return operand1 | operand2;
+        break;
+    case 6: // REM
+        return operand1 % operand2;
+        break;
+    case 7: // XOR
+        return operand1 ^ operand2;
+        break;
+    case 8: // DIV
+        return operand1 / operand2;
+        break;
+    case 9: // SLL
+        return operand1 << (operand2 & 0x1F);
+        break;
+    case 10: // SRL
+        return (unsigned)operand1 >> (operand2 & 0x1F);
+        break;
+    case 11: // SRA
+        return operand1 >> (operand2 & 0x1F);
+        break;
+    case 12: // SLT
+        return (operand1 < operand2) ? 1 : 0;
+        break;
+    case 13: // BEQ
+        return (operand1 == operand2) ? 1 : 0;
+        break;
+    case 14: // BNE
+        return (operand1 != operand2) ? 1 : 0;
+        break;
+    case 15: // BLT
+        return (operand1 < operand2) ? 1 : 0;
+        break;
+    case 16: // BGE
+        return (operand1 >= operand2) ? 1 : 0;
+        break;
+    }
+    return -1;
 }
 
 string IAG()
@@ -108,9 +168,9 @@ void fetch()
 
 void decode()
 {
+
     if (if_id.isValid)
     {
-
         int instruction = convert_binstr2int(if_id.instruction);
         id_ex.opcode = instruction & 0x7F;
         id_ex.rd = (instruction >> 7) & 0x1F;
@@ -119,35 +179,77 @@ void decode()
         id_ex.rs2 = (instruction >> 20) & 0x1F;
         id_ex.funct7 = (instruction >> 25) & 0x7F;
         id_ex.imm = 0;
-
+        id_ex.useImmediateForB = false;
+        id_ex.memoryAccess = false;
+        id_ex.memoryRequest = false;
+        id_ex.writeBack = true;
+        id_ex.controlMuxY = 0;
         switch (id_ex.opcode)
         {
         // R-type
         case 0x33:
+            id_ex.signal = "000";
+            id_ex.useImmediateForB = false;
             if (id_ex.funct3 == 0 && id_ex.funct7 == 0)
+            {
                 id_ex.operation = "ADD";
+                id_ex.aluOperation = 1;
+            }
             else if (id_ex.funct3 == 0 && id_ex.funct7 == 0x20)
+            {
                 id_ex.operation = "SUB";
+                id_ex.aluOperation = 2;
+            }
             else if (id_ex.funct3 == 7)
+            {
                 id_ex.operation = "AND";
+                id_ex.aluOperation = 3;
+            }
             else if (id_ex.funct3 == 0 && id_ex.funct7 == 0x01)
+            {
                 id_ex.operation = "MUL";
+                id_ex.aluOperation = 4;
+            }
             else if (id_ex.funct3 == 6 && id_ex.funct7 == 0)
+            {
                 id_ex.operation = "OR";
+                id_ex.aluOperation = 5;
+            }
             else if (id_ex.funct3 == 6 && id_ex.funct7 == 0x01)
+            {
                 id_ex.operation = "REM";
+                id_ex.aluOperation = 6;
+            }
             else if (id_ex.funct3 == 4 && id_ex.funct7 == 0)
+            {
                 id_ex.operation = "XOR";
+                id_ex.aluOperation = 7;
+            }
             else if (id_ex.funct3 == 4 && id_ex.funct7 == 0x01)
+            {
                 id_ex.operation = "DIV";
+                id_ex.aluOperation = 8;
+            }
             else if (id_ex.funct3 == 1)
+            {
                 id_ex.operation = "SLL";
+                id_ex.aluOperation = 9;
+            }
             else if (id_ex.funct3 == 5 && id_ex.funct7 == 0)
+            {
                 id_ex.operation = "SRL";
+                id_ex.aluOperation = 10;
+            }
             else if (id_ex.funct3 == 5 && id_ex.funct7 == 0x20)
+            {
                 id_ex.operation = "SRA";
+                id_ex.aluOperation = 11;
+            }
             else if (id_ex.funct3 == 2)
+            {
                 id_ex.operation = "SLT";
+                id_ex.aluOperation = 12;
+            }
             else
                 id_ex.operation = "UNKNOWN R-TYPE";
 
@@ -156,23 +258,46 @@ void decode()
 
         // I-type
         case 0x13:
+            id_ex.signal = "001";
             id_ex.imm = (instruction >> 20) & 0xFFF; // Extract 12-bit immediate.
+            id_ex.useImmediateForB = true;
             if (id_ex.imm & 0x800)
                 id_ex.imm |= 0xFFFFF000;
             if (id_ex.funct3 == 0)
+            {
                 id_ex.operation = "ADDI";
+                id_ex.aluOperation = 1;
+            }
             else if (id_ex.funct3 == 7)
+            {
                 id_ex.operation = "ANDI";
+                id_ex.aluOperation = 3;
+            }
             else if (id_ex.funct3 == 6)
+            {
                 id_ex.operation = "ORI";
+                id_ex.aluOperation = 5;
+            }
             else if (id_ex.funct3 == 4)
+            {
                 id_ex.operation = "XORI";
+                id_ex.aluOperation = 7;
+            }
             else if (id_ex.funct3 == 2)
+            {
                 id_ex.operation = "SLTI";
+                id_ex.aluOperation = 12;
+            }
             else if (id_ex.funct3 == 1)
+            {
                 id_ex.operation = "SLLI";
+                id_ex.aluOperation = 9;
+            }
             else if (id_ex.funct3 == 5)
+            {
                 id_ex.operation = "SRLI";
+                id_ex.aluOperation = 10;
+            }
             else
                 id_ex.operation = "UNKNOWN I-TYPE";
             cout << "DECODE: Operation is " << id_ex.operation << ", first operand " << R[id_ex.rs1] << ", immediate value " << id_ex.imm << ", destination register " << id_ex.rd << endl;
@@ -180,17 +305,34 @@ void decode()
 
         // I-type Load instructions
         case 0x03:
+            id_ex.signal = "001";
+            id_ex.memoryAccess = true;
             id_ex.imm = (instruction >> 20) & 0xFFF;
+            id_ex.useImmediateForB = true;
+            id_ex.controlMuxY = 1;
             if (id_ex.imm & 0x800)
                 id_ex.imm |= 0xFFFFF000;
+            id_ex.aluOperation = 1;
             if (id_ex.funct3 == 0)
+            {
                 id_ex.operation = "LB";
+                id_ex.size = 1;
+            }
             else if (id_ex.funct3 == 1)
+            {
                 id_ex.operation = "LH";
+                id_ex.size = 2;
+            }
             else if (id_ex.funct3 == 2)
+            {
                 id_ex.operation = "LW";
+                id_ex.size = 4;
+            }
             else if (id_ex.funct3 == 3)
+            {
                 id_ex.operation = "LD";
+                id_ex.size = 8;
+            }
             else
                 id_ex.operation = "UNKNOWN LOAD";
             cout << "DECODE: Operation is " << id_ex.operation << ", base register " << R[id_ex.rs1] << ", offset " << id_ex.imm << ", destination register " << id_ex.rd << endl;
@@ -198,7 +340,11 @@ void decode()
 
         // JALR instruction (I-type)
         case 0x67:
+            id_ex.useImmediateForB = false;
+            id_ex.controlMuxY = 2;
             id_ex.imm = (instruction >> 20) & 0xFFF;
+            id_ex.signal = "111";
+
             if (id_ex.imm & 0x800)
                 id_ex.imm |= 0xFFFFF000;
             id_ex.operation = "JALR";
@@ -207,18 +353,37 @@ void decode()
 
         // S-type
         case 0x23:
+            id_ex.signal = "011";
+            id_ex.useImmediateForB = false;
+            id_ex.memoryRequest = true;
+            id_ex.controlMuxY = 3;
             // Immediate is split between bits [11:7] and [31:25]
             id_ex.imm = (((instruction >> 7) & 0x1F) | (((instruction >> 25) & 0x7F) << 5));
+            id_ex.aluOperation = 1;
+            id_ex.useImmediateForB = true;
+            id_ex.writeBack = false;
             if (id_ex.imm & 0x800)
                 id_ex.imm |= 0xFFFFF000;
             if (id_ex.funct3 == 0)
+            {
                 id_ex.operation = "SB";
+                id_ex.size = 1;
+            }
             else if (id_ex.funct3 == 1)
+            {
                 id_ex.operation = "SH";
+                id_ex.size = 2;
+            }
             else if (id_ex.funct3 == 2)
+            {
                 id_ex.operation = "SW";
+                id_ex.size = 4;
+            }
             else if (id_ex.funct3 == 3)
+            {
                 id_ex.operation = "SD";
+                id_ex.size = 8;
+            }
             else
                 id_ex.operation = "UNKNOWN S-TYPE";
             cout << "DECODE: Operation is " << id_ex.operation << ", base register " << R[id_ex.rs1] << ", second register " << R[id_ex.rs2] << ", offset " << id_ex.imm << endl;
@@ -226,8 +391,11 @@ void decode()
 
         // SB-type
         case 0x63:
+            id_ex.useImmediateForB = false;
+            id_ex.writeBack = false;
+            id_ex.controlMuxY = 3;
             cout << instruction << endl;
-
+            id_ex.signal = "100";
             id_ex.imm = (((instruction >> 7) & 0x1) << 11) |
                         (((instruction >> 8) & 0xF) << 1) |
                         (((instruction >> 25) & 0x3F) << 5) |
@@ -235,13 +403,25 @@ void decode()
             if (id_ex.imm & 0x1000)
                 id_ex.imm |= 0xFFFFE000;
             if (id_ex.funct3 == 0)
+            {
                 id_ex.operation = "BEQ";
+                id_ex.aluOperation = 13;
+            }
             else if (id_ex.funct3 == 1)
+            {
                 id_ex.operation = "BNE";
+                id_ex.aluOperation = 14;
+            }
             else if (id_ex.funct3 == 4)
+            {
                 id_ex.operation = "BLT";
+                id_ex.aluOperation = 15;
+            }
             else if (id_ex.funct3 == 5)
+            {
                 id_ex.operation = "BGE";
+                id_ex.aluOperation = 16;
+            }
             else
                 id_ex.operation = "UNKNOWN BRANCH";
             cout << "DECODE: Operation is " << id_ex.operation << ", first operand " << R[id_ex.rs1] << ", second operand " << R[id_ex.rs2] << ", branch offset " << id_ex.imm << endl;
@@ -249,6 +429,8 @@ void decode()
 
         // U-type lui
         case 0x37:
+            id_ex.useImmediateForB = false;
+            id_ex.signal = "101";
             id_ex.imm = instruction & 0xFFFFF000;
             id_ex.operation = "LUI";
             cout << "DECODE: Operation is " << id_ex.operation << ", destination register " << id_ex.rd << ", immediate " << id_ex.imm << endl;
@@ -256,6 +438,8 @@ void decode()
 
         // U-type auipc
         case 0x17:
+            id_ex.useImmediateForB = false;
+            id_ex.signal = "110";
             id_ex.imm = instruction & 0xFFFFF000;
             id_ex.operation = "AUIPC";
             cout << "DECODE: Operation is " << id_ex.operation << ", destination register " << id_ex.rd << ", immediate " << id_ex.imm << endl;
@@ -263,6 +447,9 @@ void decode()
 
         // UJ-type
         case 0x6F:
+            id_ex.useImmediateForB = false;
+            id_ex.signal = "111";
+            id_ex.controlMuxY = 2;
             id_ex.imm = (((instruction >> 21) & 0x3FF) << 1) |
                         (((instruction >> 20) & 0x1) << 11) |
                         (((instruction >> 12) & 0xFF) << 12) |
@@ -278,10 +465,9 @@ void decode()
             cout << "DECODE: Unsupported ir.opcode 0x" << hex << id_ex.opcode << dec << endl;
             break;
         }
-        id_ex.valid = true;
+        id_ex.valid=true;
+        if (numStallNeeded == 0) DataHazard();
     }
-    if(numStallNeeded==0) DataHazard();
-    // clockCycle++;
 }
 
 // Mux A selection: choose either register ir.rs1 or the current PC.
@@ -314,107 +500,72 @@ int selectoperandB(bool useImmediateForB)
     return operandB;
 }
 
+void MuxY(int control)
+{
+    switch (control)
+    {
+    case 0:
+        RY = ex_mem.aluResult;
+        break;
+    case 1:
+        RY = memoryData;
+        break;
+    case 2:
+        RY = returnAddress;
+        break;
+    case 3:
+        RY = 0;
+        break;
+
+    default:
+        break;
+    }
+}
 void execute()
 {
     if (id_ex.valid)
     {
         is_PCupdated_while_execution = false;
         bool usePCForA = false;
-        bool useImmediateForB = false;
-        int operandB = selectoperandB(useImmediateForB);
+
         int operandA = selectoperandA(usePCForA);
+        int operandB = selectoperandB(0);
 
-        if (id_ex.opcode == 0x33)
+        if (id_ex.signal == "000")
         { // R-type
-            if (id_ex.operation == "ADD")
-                aluResult = operandA + operandB;
-            else if (id_ex.operation == "SUB")
-                aluResult = operandA - operandB;
 
-            else if (id_ex.operation == "AND")
-                aluResult = operandA & operandB;
-            else if (id_ex.operation == "MUL")
-                aluResult = operandA * operandB;
-            else if (id_ex.operation == "DIV")
-                aluResult = operandA / operandB;
-            else if (id_ex.operation == "REM")
-                aluResult = operandA % operandB;
-            else if (id_ex.operation == "OR")
-                aluResult = operandA | operandB;
-            else if (id_ex.operation == "XOR")
-                aluResult = operandA ^ operandB;
-            else if (id_ex.operation == "SLL")
-                aluResult = operandA << (operandB & 0x1F);
-            else if (id_ex.operation == "SRL")
-                aluResult = (unsigned)operandA >> (operandB & 0x1F);
-            else if (id_ex.operation == "SRA")
-                aluResult = operandA >> (operandB & 0x1F);
-            else if (id_ex.operation == "SLT")
-                aluResult = (operandA < operandB) ? 1 : 0;
-            else
-                cout << "EXECUTE: Unsupported R-type ir.operation." << endl;
+            aluResult = ALU(operandA, operandB, id_ex.aluOperation);
             cout << "EXECUTE: R-type operation result is " << aluResult << endl;
         }
-        else if (id_ex.opcode == 0x13)
-        { // I-type
-            useImmediateForB = true;
-            operandB = selectoperandB(useImmediateForB);
-            if (id_ex.funct3 == 0) // ADDI
-                aluResult = operandA + operandB;
-            else if (id_ex.funct3 == 7) // ANDI
-                aluResult = operandA & operandB;
-            else if (id_ex.funct3 == 6) // ORI
-                aluResult = operandA | operandB;
-            else if (id_ex.funct3 == 4) // XORI
-                aluResult = operandA ^ operandB;
-            else if (id_ex.funct3 == 2) // SLTI
-                aluResult = (operandA < operandB) ? 1 : 0;
-            else if (id_ex.funct3 == 1) // SLLI
-                aluResult = operandA << (operandB & 0x1F);
-            else if (id_ex.funct3 == 5) // SRLI
-                aluResult = (unsigned)operandA >> (operandB & 0x1F);
-            else
-                cout << "EXECUTE: Unsupported I-type ALU ir.operation." << endl;
+        else if (id_ex.signal == "001")
+        { // I-type & Load
+            // id_ex.useImmediateForB = true;
+            operandB = selectoperandB(id_ex.useImmediateForB);
+            aluResult = ALU(operandA, operandB, id_ex.aluOperation);
             cout << "EXECUTE: I-type operation result is " << aluResult << endl;
         }
-        else if (id_ex.opcode == 0x03)
-        { // Load instruction
-            useImmediateForB = true;
-            operandB = selectoperandB(useImmediateForB);
-            aluResult = operandA + operandB; // EA
-            cout << "EXECUTE: Effective address is " << aluResult << endl;
-        }
-        else if (id_ex.opcode == 0x23)
+
+        else if (id_ex.signal == "011")
         {                  // Store instructions (S-type)
             RM = operandB; // here operandB=R[ir.rs2] that is value to be stored
-            useImmediateForB = true;
-            operandB = selectoperandB(useImmediateForB); // now operandB is offset
-            aluResult = operandA + operandB;             // EA
+            // id_ex.useImmediateForB = true;
+            operandB = selectoperandB(id_ex.useImmediateForB); // now operandB is offset
+            aluResult = ALU(operandA, operandB, id_ex.aluOperation);
             cout << "EXECUTE: Effective address is " << aluResult << endl;
         }
-        else if (id_ex.opcode == 0x63)
+        else if (id_ex.signal == "100")
         { // Branch instructions (SB-type)
-            aluResult = 0;
-            if (id_ex.funct3 == 0 && (R[id_ex.rs1] == R[id_ex.rs2])) // BEQ
-                aluResult = 1;
-            else if (id_ex.funct3 == 1 && (R[id_ex.rs1] != R[id_ex.rs2])) // BNE
-                aluResult = 1;
-            else if (id_ex.funct3 == 4 && (R[id_ex.rs1] < R[id_ex.rs2])) // BLT
-                aluResult = 1;
-            else if (id_ex.funct3 == 5 && (R[id_ex.rs1] >= R[id_ex.rs2])) // BGE
-                aluResult = 1;
-            else
-                aluResult = 0;
+            aluResult = ALU(operandA, operandB, id_ex.aluOperation);
             currentPC_str = IAG();
             is_PCupdated_while_execution = true;
             cout << "EXECUTE: Branch operation result is " << aluResult << endl;
         }
-        else if (id_ex.opcode == 0x37)
+        else if (id_ex.signal == "101")
         { // LUI
             aluResult = id_ex.imm;
             cout << "EXECUTE: LUI operation result is " << aluResult << endl;
         }
-        else if (id_ex.opcode == 0x17)
+        else if (id_ex.signal == "110")
         { // AUIPC
             // ir.imm is shifted left by 12 bits and added to PC.
             aluResult = id_ex.imm;
@@ -422,52 +573,50 @@ void execute()
             aluResult = aluResult + convert_hexstr2int(currentPC_str, 32);
             cout << "EXECUTE: AUIPC operation result is " << aluResult << endl;
         }
-        else if (id_ex.opcode == 0x6F)
-        { // JAL
+        else if (id_ex.signal == "111")
+        { // JAL & JALR
             // IAG povides add stores current PC + 4 in returnAddress
             currentPC_str = IAG();
             is_PCupdated_while_execution = true;
-            cout << "EXECUTE: NO ALU operation required for JAL\n";
+            cout << "EXECUTE: NO ALU operation required\n";
         }
-        else if (id_ex.opcode == 0x67)
-        { // JALR
-            // IAG update PC as per JALR instruction
-            currentPC_str = IAG();
-            is_PCupdated_while_execution = true;
-            cout << "EXECUTE: NO ALU operation required for JALR\n";
-        }
+
         else
         {
             cout << "EXECUTE: Unsupported ir.opcode in ALU simulation." << endl;
         }
         ex_mem.aluResult = aluResult;
-        ex_mem.operation = id_ex.operation;
-        ex_mem.opcode = id_ex.opcode;
-        ex_mem.funct3 = id_ex.funct3;
-        ex_mem.pc = id_ex.pc;
+
         ex_mem.rd = id_ex.rd;
         ex_mem.valid = true;
+        ex_mem.memoryAccess = id_ex.memoryAccess;
+        ex_mem.memoryRequest = id_ex.memoryRequest;
+        ex_mem.size = id_ex.size;
+        ex_mem.writeBack = id_ex.writeBack;
+        ex_mem.controlMuxY = id_ex.controlMuxY;
+
+        ex_mem.valid=true;
+        // clockCycle++;
     }
-    // clockCycle++;
 }
 
 void memory_access()
 {
+    // Load instruction
     if (ex_mem.valid)
     {
-        // Load instruction
-        if (ex_mem.opcode == 0x03)
+        if (ex_mem.memoryAccess)
         {
             // we have to check lw,lb,lh,ld
             string addressStr;
             string res = "";
-            if (ex_mem.funct3 == 0)
+            if (ex_mem.size == 1)
             { // LB
                 addressStr = convert_int2hexstr(ex_mem.aluResult, 32);
                 res += data_map[addressStr];
                 memoryData = convert_hexstr2int(res, 8);
             }
-            else if (ex_mem.funct3 == 1)
+            else if (ex_mem.size == 2)
             { // LH
                 long long int x = ex_mem.aluResult + 1;
                 while (x >= ex_mem.aluResult)
@@ -478,7 +627,7 @@ void memory_access()
                 }
                 memoryData = convert_hexstr2int(res, 16);
             }
-            else if (ex_mem.funct3 == 2)
+            else if (ex_mem.size == 4)
             { // LW
                 long long int x = ex_mem.aluResult + 3;
                 while (x >= ex_mem.aluResult)
@@ -489,7 +638,7 @@ void memory_access()
                 }
                 memoryData = convert_hexstr2int(res, 32);
             }
-            else if (ex_mem.funct3 == 3)
+            else if (ex_mem.size == 8)
             { // LD
                 long long int x = ex_mem.aluResult + 7;
                 while (x >= ex_mem.aluResult)
@@ -503,18 +652,18 @@ void memory_access()
             cout << "MEM: Loaded data " << memoryData << " from memory address " << ex_mem.aluResult << endl;
         }
         // Store instruction
-        else if (ex_mem.opcode == 0x23)
+        else if (ex_mem.memoryRequest)
         {
             string addressStr;
             string data;
             long long int int_address = ex_mem.aluResult;
-            if (ex_mem.funct3 == 0)
+            if (ex_mem.size == 1)
             { // SB
                 data = convert_int2hexstr(RM, 8);
                 addressStr = convert_int2hexstr(int_address, 32);
                 data_map[addressStr] = data.substr(2, 2);
             }
-            else if (ex_mem.funct3 == 1)
+            else if (ex_mem.size == 2)
             { // SH
                 data = convert_int2hexstr(RM, 16);
                 for (int i = 1; i >= 0; --i)
@@ -524,7 +673,7 @@ void memory_access()
                     data_map[addressStr] = data.substr(2 * i + 2, 2);
                 }
             }
-            else if (ex_mem.funct3 == 2)
+            else if (ex_mem.size == 4)
             { // SW
                 data = convert_int2hexstr(RM, 32);
                 for (int i = 3; i >= 0; --i)
@@ -534,7 +683,7 @@ void memory_access()
                     data_map[addressStr] = data.substr(2 * i + 2, 2);
                 }
             }
-            else if (ex_mem.funct3 == 3)
+            else if (ex_mem.size == 8)
             { // SD
                 data = convert_int2hexstr(RM, 64);
                 for (int i = 7; i >= 0; --i)
@@ -552,36 +701,13 @@ void memory_access()
         }
 
         // now we have mux Y with input as aluResult or memroyData or returnAddress
-        if (ex_mem.opcode == 0x03)
-        { // Load instruction
-            RY = memoryData;
-        }
-        else if (ex_mem.opcode == 0x6F)
-        { // JAL
-            RY = returnAddress;
-        }
-        else if (ex_mem.opcode == 0x67)
-        { // JALR
-            RY = returnAddress;
-        }
-        else if (ex_mem.opcode == 0x23)
-        { // Store instruction
-            RY = 0;
-        }
-        else if (ex_mem.opcode == 0x63)
-        {
-            RY = 0;
-        }
-        else
-        {
-            RY = ex_mem.aluResult;
-        }
-        mem_wb.opcode = ex_mem.opcode;
-        mem_wb.operation = ex_mem.operation;
-        mem_wb.pc = ex_mem.pc;
+        MuxY(ex_mem.controlMuxY);
+
         mem_wb.rd = ex_mem.rd;
         mem_wb.writeData = RY;
-        mem_wb.valid = true;
+        mem_wb.writeBack = ex_mem.writeBack;
+
+        mem_wb.valid =true;
         // clockCycle++;
         return;
     }
@@ -591,7 +717,7 @@ void write_back()
 {
     if (mem_wb.valid)
     {
-        if (mem_wb.opcode == 0x23 || mem_wb.opcode == 0x63)
+        if (!mem_wb.writeBack)
         {
             cout << "WB: No write back required\n";
         }
