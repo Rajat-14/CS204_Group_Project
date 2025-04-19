@@ -34,6 +34,7 @@ void controlHazard()
             {
                 is_PCupdated_while_execution = false;
             }
+            cout << "Clock: " << clockCycle << endl;
             for (auto it : R)
             {
                 cout << it << " ";
@@ -71,6 +72,13 @@ void DataHazard()
             numStallNeeded = 2;
             cout << "Stalling pipeline due to data hazard\n";
             stallCount += 2;
+            cout << "Clock: " << clockCycle << endl;
+            for (auto it : R)
+            {
+                cout << it << " ";
+            }
+            cout << endl;
+            cout << "----------------------------------------------------------------------------------------------------\n";
         }
         else
         {
@@ -176,6 +184,13 @@ void DataHazard()
 
             cout << "Stalling pipeline due to data hazard\n";
             stallCount += 1;
+            cout << "Clock: " << clockCycle << endl;
+            for (auto it : R)
+            {
+                cout << it << " ";
+            }
+            cout << endl;
+            cout << "----------------------------------------------------------------------------------------------------\n";
         }
         else
         {

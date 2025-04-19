@@ -94,6 +94,7 @@ int main()
             // just break while loop
             if (pipelineEnd && (id_ex.signal == "100" || id_ex.signal == "111"))
             {
+
                 cout << "Clock: " << clockCycle << endl;
                 for (auto it : R)
                 {
