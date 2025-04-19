@@ -26,7 +26,8 @@ extern bool is_PCupdated_while_execution;
 extern int R[32];
 extern long long int clockCycle;
 extern bool pipelineEnd;
-
+extern bool isFlushingDone;
+extern bool stallingWhileDataForwarding;
 //---------------- Instruction Register (Phase 2) ----------------
 struct instruction_register
 {

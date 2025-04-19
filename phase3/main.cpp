@@ -30,13 +30,13 @@ int main()
     for (map<string, string>::const_iterator it = data_map.begin(); it != data_map.end(); ++it)
     {
         cout << "Address: " << it->first
-        << " -> Value: " << it->second << "\n";
+             << " -> Value: " << it->second << "\n";
     }
-    
+
     cout << "----------------------------------------------------------------------------------------------------\n";
     while (instruction_map[currentPC_str] != "Terminate" || if_id.isValid || id_ex.valid || ex_mem.valid || mem_wb.valid)
     {
-        if (pipelineEnd)
+        if (pipelineEnd && id_ex.signal != "100" && id_ex.signal != "111")
         {
             clockCycle++;
             write_back();
@@ -70,12 +70,46 @@ int main()
             cout << "----------------------------------------------------------------------------------------------------\n";
             break;
         }
+
         clockCycle++;
         write_back();
         memory_access();
         execute();
-        decode();
-        if(numStallNeeded==0){fetch();}else{cout<<"StallsNeeded: "<<numStallNeeded<<endl;}
+        if (isFlushingDone == false && !pipelineEnd)
+        {
+            decode();
+            if (numStallNeeded == 0 && !stallingWhileDataForwarding)
+            {
+                fetch();
+            }
+            else if (stallingWhileDataForwarding)
+            {
+                stallingWhileDataForwarding = false;
+            }
+        }
+        else
+        {
+            // if last fetched is terminate then we have write_back its prev instruction in control hazard()
+            // so last instruction is WB and current PC ="terminate"
+            // just break while loop
+            if (pipelineEnd && (id_ex.signal == "100" || id_ex.signal == "111"))
+            {
+                cout << "Clock: " << clockCycle << endl;
+                for (auto it : R)
+                {
+                    cout << it << " ";
+                }
+                cout << endl;
+                cout << "----------------------------------------------------------------------------------------------------\n";
+                break;
+            }
+            isFlushingDone = false;
+        }
+
+        if (numStallNeeded != 0)
+        {
+            cout << "Nummer of stalls needed " << numStallNeeded << endl;
+        }
 
         if (numStallNeeded == 2)
         {
@@ -91,7 +125,7 @@ int main()
             cout << "----------------------------------------------------------------------------------------------------\n";
             clockCycle++;
             write_back();
-            decode();  
+            decode();
             fetch();
             cout << "Clock: " << clockCycle << endl;
             for (auto it : R)
@@ -105,9 +139,13 @@ int main()
             {
                 currentPC_str = IAG();
             }
+            else
+            {
+                is_PCupdated_while_execution = false;
+            }
             // i want to update only do fetch, decode and execute in next cycle
-            ex_mem.valid=false;
-            mem_wb.valid=false;
+            ex_mem.valid = false;
+            mem_wb.valid = false;
             continue;
         }
         else if (numStallNeeded == 1)
@@ -129,16 +167,24 @@ int main()
             {
                 currentPC_str = IAG();
             }
+            else
+            {
+                is_PCupdated_while_execution = false;
+            }
             // doing write back for next cycle in this one only and keeping flow same for next cycles
             write_back();
-            ex_mem.valid=false;
-            mem_wb.valid=false;
+            ex_mem.valid = false;
+            mem_wb.valid = false;
             continue;
         }
 
         if (is_PCupdated_while_execution == false)
         {
             currentPC_str = IAG();
+        }
+        else
+        {
+            is_PCupdated_while_execution = false;
         }
         cout << "Clock: " << clockCycle << endl;
         for (auto it : R)

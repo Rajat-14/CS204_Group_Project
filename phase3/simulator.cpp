@@ -17,10 +17,12 @@ long long int clockCycle = 0;
 int numStallNeeded = 0;
 bool pipelineEnd = false;
 instruction_register ir;
+bool stallingWhileDataForwarding = false;
+bool isFlushingDone = false;
 
 //---------------- Pipeline Registers (Phase 3) ----------------
 IF_ID if_id = {"", "", false};
-ID_EX id_ex ={0, 0, 0, 0, 0, 0, 0, 0, 0, "", "", 0, false, false, "", false, false, 0, false, 0};
+ID_EX id_ex = {0, 0, 0, 0, 0, 0, 0, 0, 0, "", "", 0, false, false, "", false, false, 0, false, 0};
 EX_MEM ex_mem = {0, 0, false, false, false, 0, false, 0};
 MEM_WB mem_wb = {0, 0, false, false};
 

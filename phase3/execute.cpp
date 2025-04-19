@@ -2,12 +2,68 @@
 #include "utils.h"
 #include <sstream>
 
+void controlHazard()
+{
+    // id_ex.signal == "100" for branch instructions
+    // id_ex.signal == "111" for JAL or JALR instructions
+    if (id_ex.signal == "100" || id_ex.signal == "111")
+    {
+        // flush pipeline only if branch taken
+        // now check AluResult for branch taken or not
+        if (aluResult == 1)
+        {
+            cout << "Clock: " << clockCycle << endl;
+            for (auto it : R)
+            {
+                cout << it << " ";
+            }
+            cout << endl;
+            cout << "----------------------------------------------------------------------------------------------------\n";
+            cout << "Flushed pipeline due to branch taken\n";
+            clockCycle++;
+            write_back();
+            memory_access();
+            fetch();
+            is_PCupdated_while_execution = false;
+            // now in next cycle there should be no MA,no EXE.
+            if (is_PCupdated_while_execution == false)
+            {
+                currentPC_str = IAG();
+            }
+            else
+            {
+                is_PCupdated_while_execution = false;
+            }
+            for (auto it : R)
+            {
+                cout << it << " ";
+            }
+            cout << endl;
+            cout << "----------------------------------------------------------------------------------------------------\n";
+
+            clockCycle++;
+            write_back();
+            if (!pipelineEnd)
+            { // if pc is at terminate so we will not fetch again and not decode it
+                id_ex = {0, 0, 0, 0, 0, 0, 0, 0, 0, "", "", 0, false, false, "", false, false, 0, false, 0};
+                ex_mem = {0, 0, false, false, false, 0, false, 0};
+                mem_wb = {0, 0, false, false};
+                decode();
+                fetch();
+            }
+            ex_mem.valid = false;
+            mem_wb.valid = false;
+            isFlushingDone = true;
+        }
+    }
+}
+
 void DataHazard()
 {
     // we  identify producer consumer relationship
     // producer can be ex_mem or mem_wb
     // consumer will be in id_ex stage
-    if (ex_mem.valid && (id_ex.rs1 == ex_mem.rd || id_ex.rs2 == ex_mem.rd))
+    if (ex_mem.valid && ((id_ex.rs1 == ex_mem.rd && id_ex.rs1 != 0) || (id_ex.rs2 == ex_mem.rd && id_ex.rs1 != 0)))
     {
         if (!enableDataForwarding)
         {
@@ -19,20 +75,98 @@ void DataHazard()
         else
         {
             // data forwarding is enabled, we can forward the data from ex_mem to id_ex
+            // we have to check for special case when rd is from a load instruction
+            // in special case one stall will be still needed
             if_id.isValid = true;
-            if (id_ex.rs1 == ex_mem.rd)
+
+            if (id_ex.rs1 == ex_mem.rd && id_ex.rs1 != 0)
             {
-                id_ex.operandA = ex_mem.aluResult; // forward data to operandA
-                cout<<"Forwarding data from ex_mem to id_ex for rs1\n";
+                // we have to check if ex_mem is a load instruction
+                // if yes then we need to stall the pipeline for one cycle
+                // check if ex_mem is a load instruction
+                if (ex_mem.memoryAccess && ex_mem.rd != 0)
+                {
+                    // we have to stall the pipeline for one cycle
+                    stallingWhileDataForwarding = true;
+                    cout << "Stalling pipeline due to Data Forwarding\n";
+                    clockCycle++;
+                    write_back();
+                    memory_access();
+                    fetch();
+                    cout << "Clock: " << clockCycle << endl;
+                    for (auto it : R)
+                    {
+                        cout << it << " ";
+                    }
+                    cout << endl;
+                    cout << "----------------------------------------------------------------------------------------------------\n";
+                    if (is_PCupdated_while_execution == false)
+                    {
+                        currentPC_str = IAG();
+                    }
+                    else
+                    {
+                        is_PCupdated_while_execution = false;
+                    }
+                    // doing write back for next cycle in this one only and keeping flow same for next cycles
+                    write_back();
+                    // now our correct rd value is in mem_wb stage
+                    // so forward this correct value to id_ex stage
+                    id_ex.operandA = mem_wb.writeData;
+                    ex_mem.valid = false;
+                    mem_wb.valid = false;
+                }
+                else
+                {
+                    // we can forward the data directly
+                    id_ex.operandA = ex_mem.aluResult; // forward data to operandA
+                    cout << "Forwarding data from ex_mem to id_ex for rs1\n";
+                }
             }
             else
             {
-                id_ex.operandB = ex_mem.aluResult; // forward data to operandB
-                cout<<"Forwarding data from ex_mem to id_ex for rs2\n";
+                if (ex_mem.memoryAccess && ex_mem.rd != 0)
+                {
+                    // we have to stall the pipeline for one cycle
+                    stallingWhileDataForwarding = true;
+                    cout << "Stalling pipeline due to Data Forwarding\n";
+                    clockCycle++;
+                    write_back();
+                    memory_access();
+                    fetch();
+                    cout << "Clock: " << clockCycle << endl;
+                    for (auto it : R)
+                    {
+                        cout << it << " ";
+                    }
+                    cout << endl;
+                    cout << "----------------------------------------------------------------------------------------------------\n";
+                    if (is_PCupdated_while_execution == false)
+                    {
+                        currentPC_str = IAG();
+                    }
+                    else
+                    {
+                        is_PCupdated_while_execution = false;
+                    }
+                    // doing write back for next cycle in this one only and keeping flow same for next cycles
+                    write_back();
+                    // now our correct rd value is in mem_wb stage
+                    // so forward this correct value to id_ex stage
+                    id_ex.operandB = mem_wb.writeData;
+                    ex_mem.valid = false;
+                    mem_wb.valid = false;
+                }
+                else
+                {
+                    // we can forward the data directly
+                    id_ex.operandB = ex_mem.aluResult; // forward data to operandB
+                    cout << "Forwarding data from ex_mem to id_ex for rs2\n";
+                }
             }
         }
     }
-    else if (mem_wb.valid && (id_ex.rs1 == mem_wb.rd || id_ex.rs2 == mem_wb.rd))
+    else if (mem_wb.valid && ((id_ex.rs1 == mem_wb.rd && id_ex.rs1 != 0) || (id_ex.rs2 == mem_wb.rd && id_ex.rs2 != 0)))
     {
         // we have RAW data dependency with mem_wb stage
         if (!enableDataForwarding)
@@ -49,12 +183,12 @@ void DataHazard()
             if (id_ex.rs1 == mem_wb.rd)
             {
                 id_ex.operandA = mem_wb.writeData; // forward data to operandA
-                cout<<"Forwarding data from mem_wb to id_ex for rs1\n";
+                cout << "Forwarding data from mem_wb to id_ex for rs1\n";
             }
             else
             {
                 id_ex.operandB = mem_wb.writeData; // forward data to operandB
-                cout<<"Forwarding data from mem_wb to id_ex for rs2\n";
+                cout << "Forwarding data from mem_wb to id_ex for rs2\n";
             }
         }
     }
@@ -123,7 +257,7 @@ string IAG()
     unsigned int nextPC = currentPC + 4; // Default next PC if no branch or jump instructions
 
     // Adjust nextPC for branch and jump instructions.
-    if (id_ex.opcode == 0x63)
+    if (id_ex.signal == "100" && is_PCupdated_while_execution)
     { // Branch instructions.
         bool branchTaken = false;
         if (aluResult == 1)
@@ -132,19 +266,25 @@ string IAG()
         }
         if (branchTaken)
         {
-            nextPC = currentPC + id_ex.imm;
+            nextPC = currentPC + id_ex.imm - 8;
+        }
+        else
+        {
+            nextPC = currentPC;
+            is_PCupdated_while_execution = false;
+            isFlushingDone = false;
         }
     }
-    else if (id_ex.opcode == 0x6F)
+    else if (id_ex.operation == "JAL" && is_PCupdated_while_execution)
     { // JAL
-        returnAddress = currentPC + 4;
-        nextPC = currentPC + id_ex.imm;
+        returnAddress = currentPC - 4;
+        nextPC = currentPC + id_ex.imm - 8;
     }
-    else if (id_ex.opcode == 0x67)
+    else if (id_ex.operation == "JALR" && is_PCupdated_while_execution)
     {                                             // JALR
         nextPC = (R[id_ex.rs1] + id_ex.imm) & ~1; // Ensure the target address is even.
+        returnAddress = currentPC - 4;
     }
-
     return convert_PC2hex(nextPC);
 }
 
@@ -152,13 +292,14 @@ void fetch()
 {
     string pc = currentPC_str;
     instructionRegister = instruction_map[pc];
-    if (instructionRegister == "Terminate")
+    if (instructionRegister == "Terminate" || instructionRegister == "")
     {
         if_id.isValid = false;
         pipelineEnd = true;
         cout << "FETCH: Instruction " << instructionRegister << "from PC = " << pc << endl;
         return;
     }
+    pipelineEnd = false;
     if_id.instruction = instructionRegister;
     if_id.pc = currentPC_str;
     if_id.isValid = true;
@@ -258,6 +399,8 @@ void decode()
 
         // I-type
         case 0x13:
+            // here rs2 will contain garbage value
+            id_ex.rs2 = 0;
             id_ex.signal = "001";
             id_ex.imm = (instruction >> 20) & 0xFFF; // Extract 12-bit immediate.
             id_ex.useImmediateForB = true;
@@ -305,6 +448,8 @@ void decode()
 
         // I-type Load instructions
         case 0x03:
+            // here rs2 will contain garbage value
+            id_ex.rs2 = 0;
             id_ex.signal = "001";
             id_ex.memoryAccess = true;
             id_ex.imm = (instruction >> 20) & 0xFFF;
@@ -340,7 +485,9 @@ void decode()
 
         // JALR instruction (I-type)
         case 0x67:
-            id_ex.useImmediateForB = false;
+            // here rs2 will contain garbage value
+            id_ex.rs2 = 0;
+            id_ex.useImmediateForB = true;
             id_ex.controlMuxY = 2;
             id_ex.imm = (instruction >> 20) & 0xFFF;
             id_ex.signal = "111";
@@ -353,6 +500,8 @@ void decode()
 
         // S-type
         case 0x23:
+            // both rs1 and rs2 are used, no rd is there
+            id_ex.rd = 0;
             id_ex.signal = "011";
             id_ex.useImmediateForB = false;
             id_ex.memoryRequest = true;
@@ -391,6 +540,8 @@ void decode()
 
         // SB-type
         case 0x63:
+            // no rd is there
+            id_ex.rd = 0;
             id_ex.useImmediateForB = false;
             id_ex.writeBack = false;
             id_ex.controlMuxY = 3;
@@ -429,7 +580,9 @@ void decode()
 
         // U-type lui
         case 0x37:
-            id_ex.useImmediateForB = false;
+            id_ex.rs1 = 0;
+            id_ex.rs2 = 0;
+            id_ex.useImmediateForB = true;
             id_ex.signal = "101";
             id_ex.imm = instruction & 0xFFFFF000;
             id_ex.operation = "LUI";
@@ -438,6 +591,8 @@ void decode()
 
         // U-type auipc
         case 0x17:
+            id_ex.rs1 = 0;
+            id_ex.rs2 = 0;
             id_ex.useImmediateForB = false;
             id_ex.signal = "110";
             id_ex.imm = instruction & 0xFFFFF000;
@@ -447,6 +602,9 @@ void decode()
 
         // UJ-type
         case 0x6F:
+            // no rs1,rs2 are there
+            id_ex.rs1 = 0;
+            id_ex.rs2 = 0;
             id_ex.useImmediateForB = false;
             id_ex.signal = "111";
             id_ex.controlMuxY = 2;
@@ -465,8 +623,9 @@ void decode()
             cout << "DECODE: Unsupported ir.opcode 0x" << hex << id_ex.opcode << dec << endl;
             break;
         }
-        id_ex.valid=true;
-        if (numStallNeeded == 0) DataHazard();
+        id_ex.valid = true;
+        if (numStallNeeded == 0)
+            DataHazard();
     }
 }
 
@@ -533,7 +692,6 @@ void execute()
 
         if (id_ex.signal == "000")
         { // R-type
-
             aluResult = ALU(operandA, operandB, id_ex.aluOperation);
             cout << "EXECUTE: R-type operation result is " << aluResult << endl;
         }
@@ -556,8 +714,8 @@ void execute()
         else if (id_ex.signal == "100")
         { // Branch instructions (SB-type)
             aluResult = ALU(operandA, operandB, id_ex.aluOperation);
-            currentPC_str = IAG();
             is_PCupdated_while_execution = true;
+            currentPC_str = IAG();
             cout << "EXECUTE: Branch operation result is " << aluResult << endl;
         }
         else if (id_ex.signal == "101")
@@ -569,15 +727,15 @@ void execute()
         { // AUIPC
             // ir.imm is shifted left by 12 bits and added to PC.
             aluResult = id_ex.imm;
-
             aluResult = aluResult + convert_hexstr2int(currentPC_str, 32);
             cout << "EXECUTE: AUIPC operation result is " << aluResult << endl;
         }
         else if (id_ex.signal == "111")
         { // JAL & JALR
             // IAG povides add stores current PC + 4 in returnAddress
-            currentPC_str = IAG();
+            aluResult = 1;
             is_PCupdated_while_execution = true;
+            currentPC_str = IAG();
             cout << "EXECUTE: NO ALU operation required\n";
         }
 
@@ -595,7 +753,11 @@ void execute()
         ex_mem.writeBack = id_ex.writeBack;
         ex_mem.controlMuxY = id_ex.controlMuxY;
 
-        ex_mem.valid=true;
+        ex_mem.valid = true;
+        if ((id_ex.operation == "JAL" || id_ex.operation == "JALR" || id_ex.signal == "100") && isFlushingDone == false)
+        {
+            controlHazard();
+        }
         // clockCycle++;
     }
 }
@@ -649,6 +811,8 @@ void memory_access()
                 }
                 memoryData = convert_hexstr2int(res, 64);
             }
+            ex_mem.memoryAccess = false;
+            ex_mem.memoryRequest = false;
             cout << "MEM: Loaded data " << memoryData << " from memory address " << ex_mem.aluResult << endl;
         }
         // Store instruction
@@ -707,7 +871,9 @@ void memory_access()
         mem_wb.writeData = RY;
         mem_wb.writeBack = ex_mem.writeBack;
 
-        mem_wb.valid =true;
+        mem_wb.valid = true;
+        ex_mem.memoryAccess = false;
+        ex_mem.memoryRequest = false;
         // clockCycle++;
         return;
     }
@@ -717,13 +883,14 @@ void write_back()
 {
     if (mem_wb.valid)
     {
-        if (!mem_wb.writeBack)
+        if (!mem_wb.writeBack || mem_wb.rd == 0)
         {
             cout << "WB: No write back required\n";
         }
         else
         {
             R[mem_wb.rd] = RY;
+            mem_wb.writeBack = false;
             cout << "WB: Wrote " << RY << " to R[" << mem_wb.rd << "]\n";
         }
         R[0] = 0; // x0 is always 0
