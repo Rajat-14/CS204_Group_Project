@@ -28,6 +28,13 @@ extern long long int clockCycle;
 extern bool pipelineEnd;
 extern bool isFlushingDone;
 extern bool stallingWhileDataForwarding;
+extern map<string, pair<int, string>> branchPredictor;
+extern bool controlForIAG;
+extern bool exitLoop;
+extern bool stopFetch;
+extern bool start;
+extern bool stalled;
+extern bool stalledM;
 //---------------- Instruction Register (Phase 2) ----------------
 struct instruction_register
 {
@@ -84,6 +91,9 @@ struct EX_MEM
     int size;
     bool writeBack;
     int controlMuxY;
+    string end;
+    bool isJal;
+    bool isJalr;
 };
 
 struct MEM_WB

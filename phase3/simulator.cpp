@@ -19,15 +19,22 @@ bool pipelineEnd = false;
 instruction_register ir;
 bool stallingWhileDataForwarding = false;
 bool isFlushingDone = false;
+map<string, pair<int, string>> branchPredictor;
+bool controlForIAG = false;
+bool exitLoop = false;
+bool stopFetch = false;
+bool start = true;
+bool stalled = false;
+bool stalledM = false;
 
 //---------------- Pipeline Registers (Phase 3) ----------------
 IF_ID if_id = {"", "", false};
 ID_EX id_ex = {0, 0, 0, 0, 0, 0, 0, 0, 0, "", "", 0, false, false, "", false, false, 0, false, 0};
-EX_MEM ex_mem = {0, 0, false, false, false, 0, false, 0};
+EX_MEM ex_mem = {0, 0, false, false, false, 0, false, 0, "", false, false};
 MEM_WB mem_wb = {0, 0, false, false};
 
 //---------------- Knobs (Default Settings) ----------------
-bool enablePipelining = false;
+bool enablePipelining = true;
 bool enableDataForwarding = false;
 bool printRegisterFile = false;
 bool printPipelineTrace = false;

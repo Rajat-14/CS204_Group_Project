@@ -32,161 +32,95 @@ int main()
         cout << "Address: " << it->first
              << " -> Value: " << it->second << "\n";
     }
-
+    bool wr = false;
     cout << "----------------------------------------------------------------------------------------------------\n";
+
     while (instruction_map[currentPC_str] != "Terminate" || if_id.isValid || id_ex.valid || ex_mem.valid || mem_wb.valid)
     {
-        if (pipelineEnd && id_ex.signal != "100" && id_ex.signal != "111")
+        if (exitLoop)
         {
-            clockCycle++;
-            write_back();
-            memory_access();
-            execute();
-            cout << "Clock: " << clockCycle << endl;
-            for (auto it : R)
-            {
-                cout << it << " ";
-            }
-            cout << endl;
-            cout << "----------------------------------------------------------------------------------------------------\n";
-            clockCycle++;
-            write_back();
-            memory_access();
-            cout << "Clock: " << clockCycle << endl;
-            for (auto it : R)
-            {
-                cout << it << " ";
-            }
-            cout << endl;
-            cout << "----------------------------------------------------------------------------------------------------\n";
-            clockCycle++;
-            write_back();
-            cout << "Clock: " << clockCycle << endl;
-            for (auto it : R)
-            {
-                cout << it << " ";
-            }
-            cout << endl;
-            cout << "----------------------------------------------------------------------------------------------------\n";
             break;
         }
-
         clockCycle++;
+        if (stalled || stalledM)
+        {
+            cout << numStallNeeded << endl;
+        }
         write_back();
+        if (wr == true)
+        {
+
+            wr = 0;
+            id_ex = {0, 0, 0, 0, 0, 0, 0, 0, 0, "", "", 0, false, false, "", false, false, 0, false, 0};
+            ex_mem = {0, 0, false, false, false, 0, false, 0, "", false, false};
+            mem_wb = {0, 0, false, false};
+            controlForIAG = 0;
+            isFlushingDone = 0;
+        }
+        mem_wb.valid = false;
+        if (stalled)
+        {
+            if (numStallNeeded == 1)
+            {
+                mem_wb = {0, 0, false, false};
+
+                numStallNeeded--;
+            }
+        }
+
         memory_access();
+        if (isFlushingDone)
+        {
+            stopFetch = false;
+            wr = true;
+        }
+
+        if (stalled)
+        {
+            if (numStallNeeded == 2)
+            {
+                ex_mem = {0, 0, false, false, false, 0, false, 0, "", false, false};
+                id_ex.valid = false;
+                if_id.isValid = false;
+                isFlushingDone = 0;
+                numStallNeeded--;
+            }
+        }
+        if (stalledM)
+        {
+            if (numStallNeeded == 1)
+            {
+                ex_mem = {0, 0, false, false, false, 0, false, 0, "", false, false};
+                id_ex.valid = false;
+                if_id.isValid = false;
+                numStallNeeded--;
+            }
+        }
         execute();
-        if (isFlushingDone == false && !pipelineEnd)
-        {
-            decode();
-            if (numStallNeeded == 0 && !stallingWhileDataForwarding)
-            {
-                fetch();
-            }
-            else if (stallingWhileDataForwarding)
-            {
-                stallingWhileDataForwarding = false;
-            }
-        }
-        else
-        {
-            // if last fetched is terminate then we have write_back its prev instruction in control hazard()
-            // so last instruction is WB and current PC ="terminate"
-            // just break while loop
-            if (pipelineEnd && (id_ex.signal == "100" || id_ex.signal == "111"))
-            {
 
-                cout << "Clock: " << clockCycle << endl;
-                for (auto it : R)
-                {
-                    cout << it << " ";
-                }
-                cout << endl;
-                cout << "----------------------------------------------------------------------------------------------------\n";
-                break;
-            }
-            isFlushingDone = false;
-        }
-
-        if (numStallNeeded != 0)
+        if (numStallNeeded == 0 && stalled)
         {
-            cout << "Nummer of stalls needed " << numStallNeeded << endl;
+            id_ex = {0, 0, 0, 0, 0, 0, 0, 0, 0, "", "", 0, false, false, "", false, false, 0, false, 0};
+            ex_mem = {0, 0, false, false, false, 0, false, 0, "", false, false};
+            mem_wb = {0, 0, false, false};
+            stalled = false;
+            if_id.isValid = true;
         }
-
-        if (numStallNeeded == 2)
+        if (numStallNeeded == 0 && stalledM)
         {
-            clockCycle++;
-            write_back();
-            memory_access();
-            cout << "Clock: " << clockCycle << endl;
-            for (auto it : R)
-            {
-                cout << it << " ";
-            }
-            cout << endl;
-            cout << "----------------------------------------------------------------------------------------------------\n";
-            clockCycle++;
-            write_back();
-            decode();
+            id_ex = {0, 0, 0, 0, 0, 0, 0, 0, 0, "", "", 0, false, false, "", false, false, 0, false, 0};
+            ex_mem = {0, 0, false, false, false, 0, false, 0, "", false, false};
+
+            stalledM = false;
+            if_id.isValid = true;
+        }
+        decode();
+
+        if (!stalled && !stalledM)
+        {
             fetch();
-            cout << "Clock: " << clockCycle << endl;
-            for (auto it : R)
-            {
-                cout << it << " ";
-            }
-            cout << endl;
-            cout << "----------------------------------------------------------------------------------------------------\n";
-            numStallNeeded = 0;
-            if (is_PCupdated_while_execution == false)
-            {
-                currentPC_str = IAG();
-            }
-            else
-            {
-                is_PCupdated_while_execution = false;
-            }
-            // i want to update only do fetch, decode and execute in next cycle
-            ex_mem.valid = false;
-            mem_wb.valid = false;
-            continue;
-        }
-        else if (numStallNeeded == 1)
-        {
-            clockCycle++;
-            write_back();
-            memory_access();
-            decode();
-            fetch();
-            cout << "Clock: " << clockCycle << endl;
-            for (auto it : R)
-            {
-                cout << it << " ";
-            }
-            cout << endl;
-            cout << "----------------------------------------------------------------------------------------------------\n";
-            numStallNeeded = 0;
-            if (is_PCupdated_while_execution == false)
-            {
-                currentPC_str = IAG();
-            }
-            else
-            {
-                is_PCupdated_while_execution = false;
-            }
-            // doing write back for next cycle in this one only and keeping flow same for next cycles
-            write_back();
-            ex_mem.valid = false;
-            mem_wb.valid = false;
-            continue;
         }
 
-        if (is_PCupdated_while_execution == false)
-        {
-            currentPC_str = IAG();
-        }
-        else
-        {
-            is_PCupdated_while_execution = false;
-        }
         cout << "Clock: " << clockCycle << endl;
         for (auto it : R)
         {

@@ -12,49 +12,11 @@ void controlHazard()
         // now check AluResult for branch taken or not
         if (aluResult == 1)
         {
-            cout << "Clock: " << clockCycle << endl;
-            for (auto it : R)
-            {
-                cout << it << " ";
-            }
-            cout << endl;
-            cout << "----------------------------------------------------------------------------------------------------\n";
-            cout << "Flushed pipeline due to branch taken\n";
-            clockCycle++;
-            write_back();
-            memory_access();
-            fetch();
-            is_PCupdated_while_execution = false;
-            // now in next cycle there should be no MA,no EXE.
-            if (is_PCupdated_while_execution == false)
-            {
-                currentPC_str = IAG();
-            }
-            else
-            {
-                is_PCupdated_while_execution = false;
-            }
-            cout << "Clock: " << clockCycle << endl;
-            for (auto it : R)
-            {
-                cout << it << " ";
-            }
-            cout << endl;
-            cout << "----------------------------------------------------------------------------------------------------\n";
-
-            clockCycle++;
-            write_back();
-            if (!pipelineEnd)
-            { // if pc is at terminate so we will not fetch again and not decode it
-                id_ex = {0, 0, 0, 0, 0, 0, 0, 0, 0, "", "", 0, false, false, "", false, false, 0, false, 0};
-                ex_mem = {0, 0, false, false, false, 0, false, 0};
-                mem_wb = {0, 0, false, false};
-                decode();
-                fetch();
-            }
-            ex_mem.valid = false;
-            mem_wb.valid = false;
+            cout << "Flushed the pipeline\n";
+            if_id = {"", "", false};
+            id_ex.valid = false;
             isFlushingDone = true;
+            stopFetch = true;
         }
     }
 }
@@ -72,13 +34,7 @@ void DataHazard()
             numStallNeeded = 2;
             cout << "Stalling pipeline due to data hazard\n";
             stallCount += 2;
-            cout << "Clock: " << clockCycle << endl;
-            for (auto it : R)
-            {
-                cout << it << " ";
-            }
-            cout << endl;
-            cout << "----------------------------------------------------------------------------------------------------\n";
+            stalled = true;
         }
         else
         {
@@ -184,13 +140,7 @@ void DataHazard()
 
             cout << "Stalling pipeline due to data hazard\n";
             stallCount += 1;
-            cout << "Clock: " << clockCycle << endl;
-            for (auto it : R)
-            {
-                cout << it << " ";
-            }
-            cout << endl;
-            cout << "----------------------------------------------------------------------------------------------------\n";
+            stalledM = true;
         }
         else
         {
@@ -267,63 +217,65 @@ int ALU(int operand1, int operand2, int control)
 
 string IAG()
 {
+    if (start)
+    {
+        start = false;
+        return "0x0";
+    }
     // Convert current PC hex to integer.
     unsigned int currentPC = convert_hexstr2int(currentPC_str, 32);
     unsigned int nextPC = currentPC + 4; // Default next PC if no branch or jump instructions
 
     // Adjust nextPC for branch and jump instructions.
-    if (id_ex.signal == "100" && is_PCupdated_while_execution)
+    if (controlForIAG && id_ex.signal == "100")
     { // Branch instructions.
-        bool branchTaken = false;
-        if (aluResult == 1)
-        {
-            branchTaken = true;
-        }
-        if (branchTaken)
-        {
-            nextPC = currentPC + id_ex.imm - 8;
-        }
-        else
-        {
-            nextPC = currentPC;
-            is_PCupdated_while_execution = false;
-            isFlushingDone = false;
-        }
+        nextPC = convert_hexstr2int(id_ex.pc, 32) + id_ex.imm;
     }
-    else if (id_ex.operation == "JAL" && is_PCupdated_while_execution)
+    else if (ex_mem.isJal && controlForIAG)
     { // JAL
-        returnAddress = currentPC - 4;
-        nextPC = currentPC + id_ex.imm - 8;
+
+        nextPC = convert_hexstr2int(id_ex.pc, 32) + id_ex.imm;
     }
-    else if (id_ex.operation == "JALR" && is_PCupdated_while_execution)
+    else if (ex_mem.isJalr && controlForIAG)
     {                                             // JALR
         nextPC = (R[id_ex.rs1] + id_ex.imm) & ~1; // Ensure the target address is even.
-        returnAddress = currentPC - 4;
     }
-    return convert_PC2hex(nextPC);
+    currentPC_str = convert_PC2hex(nextPC);
+    return currentPC_str;
 }
 
 void fetch()
 {
-    string pc = currentPC_str;
-    instructionRegister = instruction_map[pc];
-    if (instructionRegister == "Terminate" || instructionRegister == "")
+    if (!stopFetch)
     {
-        if_id.isValid = false;
-        pipelineEnd = true;
+        string pc = IAG();
+        instructionRegister = instruction_map[pc];
+        if (instructionRegister == "Terminate" || instructionRegister == "")
+        {
+
+            pipelineEnd = true;
+            if_id.instruction = instructionRegister;
+            cout << "FETCH: Instruction " << instructionRegister << "from PC = " << pc << endl;
+            return;
+        }
+        pipelineEnd = false;
+        if_id.instruction = instructionRegister;
+        if_id.pc = pc;
+        if_id.isValid = true;
         cout << "FETCH: Instruction " << instructionRegister << "from PC = " << pc << endl;
-        return;
     }
-    pipelineEnd = false;
-    if_id.instruction = instructionRegister;
-    if_id.pc = currentPC_str;
-    if_id.isValid = true;
-    cout << "FETCH: Instruction " << instructionRegister << "from PC = " << pc << endl;
     // clockCycle++;
 }
 
 void decode()
 {
+    if (if_id.instruction == "Terminate")
+    {
+        id_ex.operation = "Terminate";
+        cout << "DECODE: Terminate\n";
+        stopFetch = true;
+        return;
+    }
 
     if (if_id.isValid)
     {
@@ -340,6 +292,8 @@ void decode()
         id_ex.memoryRequest = false;
         id_ex.writeBack = true;
         id_ex.controlMuxY = 0;
+        id_ex.pc = if_id.pc;
+
         switch (id_ex.opcode)
         {
         // R-type
@@ -501,6 +455,7 @@ void decode()
         // JALR instruction (I-type)
         case 0x67:
             // here rs2 will contain garbage value
+
             id_ex.rs2 = 0;
             id_ex.useImmediateForB = true;
             id_ex.controlMuxY = 2;
@@ -511,6 +466,7 @@ void decode()
                 id_ex.imm |= 0xFFFFF000;
             id_ex.operation = "JALR";
             cout << "DECODE: Operation is " << id_ex.operation << ", first operand " << R[id_ex.rs1] << ", immediate value " << id_ex.imm << ", destination register " << id_ex.rd << endl;
+
             break;
 
         // S-type
@@ -556,6 +512,7 @@ void decode()
         // SB-type
         case 0x63:
             // no rd is there
+
             id_ex.rd = 0;
             id_ex.useImmediateForB = false;
             id_ex.writeBack = false;
@@ -618,6 +575,7 @@ void decode()
         // UJ-type
         case 0x6F:
             // no rs1,rs2 are there
+
             id_ex.rs1 = 0;
             id_ex.rs2 = 0;
             id_ex.useImmediateForB = false;
@@ -639,7 +597,8 @@ void decode()
             break;
         }
         id_ex.valid = true;
-        if (numStallNeeded == 0)
+
+        if (!stalled || !stalledM)
             DataHazard();
     }
 }
@@ -697,10 +656,20 @@ void MuxY(int control)
 }
 void execute()
 {
+    if (id_ex.operation == "Terminate")
+    {
+
+        ex_mem.end = "Terminate";
+        cout << "EXECUTE: Terminate";
+        return;
+    }
     if (id_ex.valid)
     {
+        controlForIAG = false;
         is_PCupdated_while_execution = false;
         bool usePCForA = false;
+        ex_mem.isJal = 0;
+        ex_mem.isJalr = 0;
 
         int operandA = selectoperandA(usePCForA);
         int operandB = selectoperandB(0);
@@ -728,9 +697,13 @@ void execute()
         }
         else if (id_ex.signal == "100")
         { // Branch instructions (SB-type)
+            if (branchPredictor.find(if_id.pc) == branchPredictor.end())
+            {
+                branchPredictor[if_id.pc] = {1, convert_PC2hex(convert_hexstr2int(id_ex.pc, 32) + id_ex.imm)};
+            }
             aluResult = ALU(operandA, operandB, id_ex.aluOperation);
-            is_PCupdated_while_execution = true;
-            currentPC_str = IAG();
+            if (aluResult == 1)
+                controlForIAG = 1;
             cout << "EXECUTE: Branch operation result is " << aluResult << endl;
         }
         else if (id_ex.signal == "101")
@@ -742,15 +715,19 @@ void execute()
         { // AUIPC
             // ir.imm is shifted left by 12 bits and added to PC.
             aluResult = id_ex.imm;
-            aluResult = aluResult + convert_hexstr2int(currentPC_str, 32);
+            aluResult = aluResult + convert_hexstr2int(id_ex.pc, 32);
             cout << "EXECUTE: AUIPC operation result is " << aluResult << endl;
         }
         else if (id_ex.signal == "111")
         { // JAL & JALR
             // IAG povides add stores current PC + 4 in returnAddress
+            if (branchPredictor.find(if_id.pc) == branchPredictor.end())
+            {
+                branchPredictor[if_id.pc] = {1, convert_PC2hex(convert_hexstr2int(id_ex.pc, 32) + id_ex.imm)};
+            }
+            returnAddress = convert_hexstr2int(id_ex.pc, 32) + 4;
             aluResult = 1;
-            is_PCupdated_while_execution = true;
-            currentPC_str = IAG();
+            controlForIAG = true;
             cout << "EXECUTE: NO ALU operation required\n";
         }
 
@@ -758,6 +735,10 @@ void execute()
         {
             cout << "EXECUTE: Unsupported ir.opcode in ALU simulation." << endl;
         }
+        if (id_ex.operation == "JAL")
+            ex_mem.isJal = 1;
+        if (id_ex.operation == "JALR")
+            ex_mem.isJalr = 1;
         ex_mem.aluResult = aluResult;
 
         ex_mem.rd = id_ex.rd;
@@ -768,8 +749,7 @@ void execute()
         ex_mem.writeBack = id_ex.writeBack;
         ex_mem.controlMuxY = id_ex.controlMuxY;
 
-        ex_mem.valid = true;
-        if ((id_ex.operation == "JAL" || id_ex.operation == "JALR" || id_ex.signal == "100") && isFlushingDone == false)
+        if (controlForIAG && !isFlushingDone)
         {
             controlHazard();
         }
@@ -779,6 +759,11 @@ void execute()
 
 void memory_access()
 {
+    if (ex_mem.end == "Terminate")
+    {
+        exitLoop = true;
+        return;
+    }
     // Load instruction
     if (ex_mem.valid)
     {
