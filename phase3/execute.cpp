@@ -14,12 +14,11 @@ bool forwardB = false;
 int forwardedA = -1;
 int forwardedB = -1;
 
-
-bool f=0;
-bool d=0;
-bool e=0;
-bool m=0;
-bool w=0;
+bool f = 0;
+bool d = 0;
+bool e = 0;
+bool m = 0;
+bool w = 0;
 
 inline int BP_index(unsigned int pc)
 {
@@ -41,8 +40,6 @@ void checkNthInstruction(int n)
     unsigned int targetPC = pcOffset;
     std::string hx_pc = convert_PC2hex(pcOffset);
 
-
-   
     // FETCH stage
     if (if_id.pc == hx_pc && f)
     {
@@ -52,13 +49,12 @@ void checkNthInstruction(int n)
         outFile << "    PC: " << if_id.pc << "\n";
         outFile << "    IR: " << if_id.instruction << "\n";
         // Branch prediction details
-      
 
         int fetchedInstr = convert_binstr2int(if_id.instruction);
         int fetchedOpcode = fetchedInstr & 0x7F;
         bool controlInst = (fetchedOpcode == 0x63 || fetchedOpcode == 0x6F || fetchedOpcode == 0x67);
         outFile << "    Control Inst: " << (controlInst ? "Yes" : "No") << "\n";
-        
+
         outFile << "----------------------------------------\n";
     }
 
@@ -151,13 +147,12 @@ void controlHazard()
         if (prediction_used[idx])
         {
             bool pred = PHT[idx];
-            
+
             if (branch_control == 0 && pred)
             {
                 PHT[idx] = false;
                 flush2 = true;
                 branchMispredictionCount++;
-                
             }
             else if (branch_control == 1 && pred == false)
             {
@@ -165,7 +160,6 @@ void controlHazard()
                 flush1 = true;
                 PHT[idx] = true;
                 branchMispredictionCount++;
-                
             }
         }
         else
@@ -200,7 +194,7 @@ void controlHazard()
 
         cout << "Flushed pipeline due to branch taken\n";
         controlHazardCount++;
-        stallsDueToControlHazard+=2;
+        stallsDueToControlHazard += 2;
         print();
         clockCycle++;
         write_back();
@@ -513,9 +507,9 @@ void fetch()
 
     if (printSpecificInstruction)
     {
-        f=1;
+        f = 1;
         checkNthInstruction(traceInstructionNumber);
-        f=0;
+        f = 0;
     }
     // clockCycle++;
 }
@@ -852,9 +846,9 @@ void decode()
 
         if (printSpecificInstruction)
         {
-            d=1;
+            d = 1;
             checkNthInstruction(traceInstructionNumber);
-            d=0;
+            d = 0;
         }
     }
 }
@@ -1014,9 +1008,9 @@ void execute()
         // clockCycle++;
         if (printSpecificInstruction)
         {
-            e=1;
+            e = 1;
             checkNthInstruction(traceInstructionNumber);
-            e=0;
+            e = 0;
         }
         return;
     }
@@ -1137,7 +1131,9 @@ void memory_access()
         // clockCycle++;
         if (printSpecificInstruction)
         {
+            m = 1;
             checkNthInstruction(traceInstructionNumber);
+            m = 0;
         }
         return;
     }
@@ -1161,9 +1157,9 @@ void write_back()
         // clockCycle++;
         if (printSpecificInstruction)
         {
-            w=1;
+            w = 1;
             checkNthInstruction(traceInstructionNumber);
-            w=0;
+            w = 0;
         }
         totalInstructions++;
         return;
