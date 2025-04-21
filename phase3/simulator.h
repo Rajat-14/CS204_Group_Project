@@ -9,6 +9,7 @@
 #include <string>
 #include <algorithm>
 #include <iomanip>
+#include<set>
 
 using namespace std;
 
@@ -17,24 +18,40 @@ extern map<string, string> instruction_map;
 extern map<string, string> data_map;
 extern string instructionRegister;
 extern string currentPC_str;
+extern bool first_ever_fetch;
+extern int branch_control;
+extern bool jumped_to_terminate;
 extern unsigned int returnAddress;
 extern long long int RM;
 extern long long int aluResult;
 extern long long int RY;
 extern long long int memoryData;
-extern bool is_PCupdated_while_execution;
 extern int R[32];
 extern long long int clockCycle;
 extern bool pipelineEnd;
 extern bool isFlushingDone;
 extern bool stallingWhileDataForwarding;
-extern map<string, pair<int, string>> branchPredictor;
-extern bool controlForIAG;
-extern bool exitLoop;
-extern bool stopFetch;
-extern bool start;
-extern bool stalled;
-extern bool stalledM;
+extern bool flush1;
+extern bool flush2;
+extern bool fetching_in_flushing;
+
+extern bool fetchFlag;
+extern bool decodeFlag;
+extern bool executeFlag;
+extern bool memoryFlag;
+extern bool writebackFlag;
+
+
+
+static const int BTB_SIZE = 256;
+
+// the data structures:
+extern bool        PHT[BTB_SIZE];
+extern unsigned int BTB_target[BTB_SIZE];
+extern bool        BTB_valid[BTB_SIZE];
+extern bool        prediction_used[BTB_SIZE];
+
+
 //---------------- Instruction Register (Phase 2) ----------------
 struct instruction_register
 {
@@ -50,6 +67,7 @@ struct instruction_register
 extern instruction_register ir;
 
 //---------------- Pipeline Register Structures (Phase 3) ----------------
+
 struct IF_ID
 {
     string instruction;
@@ -91,9 +109,7 @@ struct EX_MEM
     int size;
     bool writeBack;
     int controlMuxY;
-    string end;
-    bool isJal;
-    bool isJalr;
+    string pc;
 };
 
 struct MEM_WB
@@ -102,6 +118,7 @@ struct MEM_WB
     int rd;
     bool valid;
     bool writeBack;
+    string pc;
 };
 
 extern IF_ID if_id;
@@ -115,25 +132,28 @@ extern bool enablePipelining;      // Knob1
 extern bool enableDataForwarding;  // Knob2
 extern bool printRegisterFile;     // Knob3
 extern bool printPipelineTrace;    // Knob4
-extern int traceInstructionNumber; // Knob5 (0 means disabled)
-extern bool printBranchPredictor;  // Knob6
+ extern int traceInstructionNumber; // Knob5 (0 means disabled)
+extern bool printBranchPredictor; 
+extern bool printSpecificInstruction;
+ // Knob6
 
 //---------------- Statistics Counters ----------------
 extern unsigned long totalCycles;
 extern unsigned long totalInstructions;
-extern unsigned long aluInstructionCount;
-extern unsigned long dataTransferCount;
-extern unsigned long controlInstructionCount;
+extern set<string> aluInstructionCount;
+extern set<string> dataTransferCount;
+extern set<string> controlInstructionCount;
 extern unsigned long stallCount;
 extern unsigned long dataHazardCount;
 extern unsigned long controlHazardCount;
 extern unsigned long branchMispredictionCount;
+extern unsigned long stallsDueToControlHazard;
 
 //---------------- Function Prototypes ----------------
 void load_mc_file(const string &filename);
 
 // Execution functions (phase 3)
-string IAG();
+void IAG();
 void fetch();
 void decode();
 void execute();
@@ -142,5 +162,9 @@ void write_back();
 
 //----------------Pipeline Functions----------------
 void DataHazard(); // Detect data hazards and handle them
+void print();
+void logPipelineRegisters();
+void printBTB();
+void checkNthInstruction(int n);
 
 #endif // SIMULATOR_H
