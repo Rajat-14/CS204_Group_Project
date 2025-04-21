@@ -5,6 +5,7 @@
 #include <string>
 #include <algorithm>
 #include <iomanip>
+#include <set>
 
 using namespace std;
 
@@ -19,6 +20,12 @@ long long int RY;
 int long long memoryData;
 bool is_PCupdated_while_execution = false;
 int R[32] = {0}; // Register file
+
+int totalInstructions = 0;
+set<string> dataTransferCount;
+set<string> controlInstructionCount;
+set<string> aluInstructionCount;
+bool printRegisterFile = true;
 
 long long int clockCycle = 0;
 
@@ -387,10 +394,14 @@ void decode()
     id_ex.memoryRequest = false;
     id_ex.writeBack = true;
     id_ex.controlMuxY = 0;
+    id_ex.pc = if_id.pc;
     switch (id_ex.opcode)
     {
-    // R-type
+        // R-type
+
     case 0x33:
+
+        aluInstructionCount.insert(id_ex.pc);
         id_ex.signal = "000";
         id_ex.useImmediateForB = false;
         if (id_ex.funct3 == 0 && id_ex.funct7 == 0)
@@ -461,6 +472,7 @@ void decode()
 
     // I-type
     case 0x13:
+        aluInstructionCount.insert(id_ex.pc);
         id_ex.signal = "001";
         id_ex.imm = (instruction >> 20) & 0xFFF; // Extract 12-bit immediate.
         id_ex.useImmediateForB = true;
@@ -508,6 +520,7 @@ void decode()
 
     // I-type Load instructions
     case 0x03:
+        dataTransferCount.insert(id_ex.pc);
         id_ex.signal = "001";
         id_ex.memoryAccess = true;
         id_ex.imm = (instruction >> 20) & 0xFFF;
@@ -543,6 +556,7 @@ void decode()
 
     // JALR instruction (I-type)
     case 0x67:
+        controlInstructionCount.insert(id_ex.pc);
         id_ex.useImmediateForB = false;
         id_ex.controlMuxY = 2;
         id_ex.imm = (instruction >> 20) & 0xFFF;
@@ -556,6 +570,7 @@ void decode()
 
     // S-type
     case 0x23:
+        dataTransferCount.insert(id_ex.pc);
         id_ex.signal = "011";
         id_ex.useImmediateForB = false;
         id_ex.memoryRequest = true;
@@ -594,6 +609,7 @@ void decode()
 
     // SB-type
     case 0x63:
+        controlInstructionCount.insert(id_ex.pc);
         id_ex.useImmediateForB = false;
         id_ex.writeBack = false;
         id_ex.controlMuxY = 3;
@@ -632,6 +648,7 @@ void decode()
 
     // U-type lui
     case 0x37:
+        aluInstructionCount.insert(id_ex.pc);
         id_ex.useImmediateForB = false;
         id_ex.signal = "101";
         id_ex.imm = instruction & 0xFFFFF000;
@@ -641,6 +658,7 @@ void decode()
 
     // U-type auipc
     case 0x17:
+        aluInstructionCount.insert(id_ex.pc);
         id_ex.useImmediateForB = false;
         id_ex.signal = "110";
         id_ex.imm = instruction & 0xFFFFF000;
@@ -650,6 +668,7 @@ void decode()
 
     // UJ-type
     case 0x6F:
+        controlInstructionCount.insert(id_ex.pc);
         id_ex.useImmediateForB = false;
         id_ex.signal = "111";
         id_ex.controlMuxY = 2;
@@ -918,11 +937,13 @@ void write_back()
     }
     R[0] = 0; // x0 is always 0
     clockCycle++;
+    totalInstructions++;
     return;
 }
 
 int main()
 {
+
     // Initializing the register file
     R[2] = 2147483612; // Stack pointer
     R[3] = 268435456;  // Frame pointer
@@ -957,9 +978,12 @@ int main()
             currentPC_str = IAG();
         }
         cout << "Clock: " << clockCycle << endl;
-        for (auto it : R)
+        if (printRegisterFile)
         {
-            cout << it << " ";
+            for (auto it : R)
+            {
+                cout << it << " ";
+            }
         }
         cout << endl;
         cout << "----------------------------------------------------------------------------------------------------\n";
@@ -980,5 +1004,19 @@ int main()
                          << " -> Value: " << it->second << "\n";
     }
 
-    return 0;
+    ofstream stat_file("output_stat.txt");
+    if (!stat_file)
+    {
+        cerr << "Error: Unable to create output_stat.txt" << endl;
+        return 1;
+    }
+
+    stat_file << "Execution Statistics\n";
+    stat_file << "----------------------\n";
+    stat_file << "Total Clock Cycles       : " << clockCycle << "\n";
+    stat_file << "Total Instructions       : " << totalInstructions << "\n";
+    stat_file << "CPI       : " << (float)clockCycle / (float)(totalInstructions) << "\n";
+    stat_file << "Data Transfer Instructions    : " << dataTransferCount.size() << "\n";
+    stat_file << "ALU Instructions    : " << aluInstructionCount.size() << "\n";
+    stat_file << "Control Instructions    : " << controlInstructionCount.size() << "\n";
 }
